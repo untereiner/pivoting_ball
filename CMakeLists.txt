@@ -6,8 +6,8 @@ project(pivoting_ball
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
-set(CGOGN_RELEASE_BUILD_DIR "../../cgogn/build" CACHE PATH "CGoGN build or install dir")
-set(CGOGN_DEBUG_BUILD_DIR "../../cgogn/build" CACHE PATH "CGoGN build or install dir")
+set(CGOGN_RELEASE_BUILD_DIR "../cgogn/build" CACHE PATH "CGoGN build or install dir")
+set(CGOGN_DEBUG_BUILD_DIR "../cgogn/build" CACHE PATH "CGoGN build or install dir")
 
 #### Default build type
 if(NOT CMAKE_BUILD_TYPE)
