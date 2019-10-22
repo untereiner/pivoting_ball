@@ -26,7 +26,6 @@
 #include <QKeyEvent>
 
 #include <QOGLViewer/qoglviewer.h>
-
 #include <cgogn/core/cmap/cmap0.h>
 #include <cgogn/core/cmap/cmap2.h>
 
@@ -49,6 +48,8 @@
 #include <cgogn/geometry/algos/ear_triangulation.h>
 
 #include <cgogn/rendering/drawer.h>
+
+using namespace cgogn::numerics;
 
 using CMap0 = cgogn::CMap0;
 using CMap2 = cgogn::CMap2;
@@ -77,6 +78,7 @@ private:
 	//2d
 	CMap2 cmap2_;
 	CMap2::VertexAttribute<Vec3> vertex_position_2_;
+	CMap2::EdgeAttribute<uint32> edge_indices_;
 
 	std::unique_ptr<cgogn::rendering::MapRender> render_2_ {nullptr};
 	std::unique_ptr<cgogn::rendering::VBO> vbo_pos_2_ {nullptr};
@@ -113,7 +115,7 @@ private:
 //
 
 std::vector<Vec3> pointsPosition;
-std::vector<bool> pointsUsed; 
+std::vector<bool> pointsUsed;
 std::vector<Vec3> triangles;
 std::vector<uint32_t> front;
 
@@ -135,7 +137,7 @@ void push_triangle(uint32_t point0, uint32_t point1, uint32_t point2, bool pushE
 	triangles.push_back(position0);
 	triangles.push_back(position1);
 	triangles.push_back(position2);
-	triangles.push_back(Vec3(red, green, blue)); 
+	triangles.push_back(Vec3(red, green, blue));
 
 	if (!pointsUsed[point0] || !pointsUsed[point1])
 		push_to_front(point0, point1, point2);
@@ -161,7 +163,7 @@ double edgePointDistance(Vec3 edgeStart, Vec3 edgeEnd, Vec3 point)
 	if (end_point.dot(start_end) >= 0.0)
 		return end_point.norm();
 
-	return start_end.cross(start_point).norm() / start_end.norm(); 
+	return start_end.cross(start_point).norm() / start_end.norm();
 }
 
 Vec3 getEdgeNormal(Vec3 edgeStart, Vec3 edgeEnd, Vec3 otherPoint)
@@ -171,7 +173,7 @@ Vec3 getEdgeNormal(Vec3 edgeStart, Vec3 edgeEnd, Vec3 otherPoint)
 
 void find_seed_triangle()
 {
-	push_triangle(0, 1, 2, true,true,true); 
+	push_triangle(0, 1, 2, true,true,true);
 }
 
 void finish_front()
@@ -207,8 +209,8 @@ void finish_front()
 		}
 
 		if (bestIndex != UINT32_MAX)
-		{ 
-			push_triangle(edgeStart, edgeEnd, bestIndex, false, true, true); 
+		{
+			push_triangle(edgeStart, edgeEnd, bestIndex, false, true, true);
 		}
 	}
 }
@@ -224,13 +226,16 @@ void Viewer::import(const std::string& point_set)
 		std::exit(EXIT_FAILURE);
 	}
 
+	vertex_position_2_ = cmap2_.add_attribute<Vec3, CMap2::Vertex>("position");
+	edge_indices_ = cmap2_.add_attribute<uint32, CMap2::Edge>("indices");
+
 	cmap0_.foreach_cell([&](CMap0::Vertex vertex)
 	{
 		pointsPosition.push_back(vertex_position_0_[vertex]);
-		pointsUsed.push_back(false); 
+		pointsUsed.push_back(false);
 	});
 
-	find_seed_triangle(); 
+	find_seed_triangle();
 	finish_front();
 
 	cgogn::geometry::compute_AABB(vertex_position_0_, bb_);
@@ -342,7 +347,7 @@ void Viewer::draw()
 }
 
 void Viewer::update_surface()
-{	
+{
 	cgogn::rendering::update_vbo(vertex_position_2_, vbo_pos_2_.get());
 
 	render_2_->init_primitives(cmap2_, cgogn::rendering::POINTS);
@@ -356,7 +361,7 @@ void Viewer::init()
 
 	//CMap0
 	vbo_pos_0_ = cgogn::make_unique<cgogn::rendering::VBO>(3);
-	render_0_ = cgogn::make_unique<cgogn::rendering::MapRender>();	
+	render_0_ = cgogn::make_unique<cgogn::rendering::MapRender>();
 	param_point_sprite_0_ = cgogn::rendering::ShaderPointSprite::generate_param();
 	param_point_sprite_0_->set_position_vbo(vbo_pos_0_.get());
 	param_point_sprite_0_->color_ = QColor(0,255,0);
@@ -420,7 +425,7 @@ void Viewer::init()
 	drawer_->color3f(0.0, 0.0, 1.0);
 	for (uint32_t i = 0; i < allPoints.size(); i++)
 	{
-		auto position = allPoints[i]; 
+		auto position = allPoints[i];
 		drawer_->vertex3f(position[0], position[1], position[2]);
 	}
 	drawer_->end();*/
