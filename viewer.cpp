@@ -26,7 +26,6 @@
 #include <QKeyEvent>
 
 #include <QOGLViewer/qoglviewer.h>
-
 #include <cgogn/core/cmap/cmap0.h>
 #include <cgogn/core/cmap/cmap2.h>
 
@@ -52,6 +51,8 @@
 
 #include "pivoting_ball_naive0.h"
 #include "pivoting_ball_naive1.h"
+
+using namespace cgogn::numerics;
 
 using CMap0 = cgogn::CMap0;
 using CMap2 = cgogn::CMap2;
@@ -158,7 +159,8 @@ Viewer::Viewer() :
 	vertex_color_2_(),
 	cmap0_(),
 	vertex_position_0_(),
-	bb_()
+	bb_(),
+	pivotingBall()
 {}
 
 void Viewer::keyPressEvent(QKeyEvent *ev)
@@ -242,7 +244,7 @@ void Viewer::draw()
 }
 
 void Viewer::update_surface()
-{	
+{
 	cgogn::rendering::update_vbo(vertex_position_2_, vbo_pos_2_.get());
 
 	render_2_->init_primitives(cmap2_, cgogn::rendering::POINTS);
@@ -256,7 +258,7 @@ void Viewer::init()
 
 	//CMap0
 	vbo_pos_0_ = cgogn::make_unique<cgogn::rendering::VBO>(3);
-	render_0_ = cgogn::make_unique<cgogn::rendering::MapRender>();	
+	render_0_ = cgogn::make_unique<cgogn::rendering::MapRender>();
 	param_point_sprite_0_ = cgogn::rendering::ShaderPointSprite::generate_param();
 	param_point_sprite_0_->set_position_vbo(vbo_pos_0_.get());
 	param_point_sprite_0_->color_ = QColor(0,255,0);
@@ -321,7 +323,7 @@ void Viewer::init()
 	drawer_->color3f(0.0, 0.0, 1.0);
 	for (uint32_t i = 0; i < allPoints.size(); i++)
 	{
-		auto position = allPoints[i]; 
+		auto position = allPoints[i];
 		drawer_->vertex3f(position[0], position[1], position[2]);
 	}
 	drawer_->end();*/
