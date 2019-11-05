@@ -34,10 +34,13 @@ find_package(QOGLViewer REQUIRED)
 find_package(Qt5 5.5.0 COMPONENTS Widgets REQUIRED)
 
 set(HEADER_FILES
-	
+	pivoting_ball_naive0.h
+	pivoting_ball_naive1.h
 	)
 
 set(SOURCE_FILES
+	pivoting_ball_naive0.cpp
+	pivoting_ball_naive1.cpp
 	viewer.cpp
 	)
 
