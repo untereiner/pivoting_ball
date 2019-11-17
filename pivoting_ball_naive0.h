@@ -33,9 +33,9 @@ class PivotingBallNaive0
 		(
 			CMap0& pointSet, 
 			CMap0::VertexAttribute<Vec3>& pointSetPositions,
+			CMap0::VertexAttribute<Vec3>& pointNormals,
 			CMap2& surface,
 			CMap2::VertexAttribute<Vec3>& surfacePositions,
-			CMap2::VertexAttribute<Vec3>& surfaceColors,
 			float ballRadius
 		);
 };

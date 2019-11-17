@@ -91,7 +91,7 @@ void PivotingBallNaive0::finish_front()
 
 		if (bestIndex != UINT32_MAX)
 		{
-			push_triangle(edgeStart, edgeEnd, bestIndex, false, true, true);
+			push_triangle(edgeStart, bestIndex, edgeEnd, false, true, true);
 		}
 	}
 }
@@ -100,9 +100,9 @@ void PivotingBallNaive0::getSurface
 (
 	CMap0& pointSet, 
 	CMap0::VertexAttribute<Vec3>& pointSetPositions,
+	CMap0::VertexAttribute<Vec3>& pointNormals,
 	CMap2& surface,
 	CMap2::VertexAttribute<Vec3>& surfacePositions,
-	CMap2::VertexAttribute<Vec3>& surfaceColors,
 	float ballRadius
 )
 {

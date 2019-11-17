@@ -76,11 +76,9 @@ public:
 	void update_surface();
 
 private:
-
 	//2d
 	CMap2 cmap2_;
 	CMap2::VertexAttribute<Vec3> vertex_position_2_;
-	CMap2::VertexAttribute<Vec3> vertex_color_2_;
 	PivotingBallNaive1 pivotingBall; 
 
 	std::unique_ptr<cgogn::rendering::MapRender> render_2_ {nullptr};
@@ -94,6 +92,7 @@ private:
 	//0d
 	CMap0 cmap0_;
 	CMap0::VertexAttribute<Vec3> vertex_position_0_;
+	CMap0::VertexAttribute<Vec3> vertex_normal_0_;
 
 	std::unique_ptr<cgogn::rendering::MapRender> render_0_ {nullptr};
 	std::unique_ptr<cgogn::rendering::VBO> vbo_pos_0_ {nullptr};
@@ -128,10 +127,15 @@ void Viewer::import(const std::string& point_set)
 		std::exit(EXIT_FAILURE);
 	}
 
-	vertex_position_2_ = cmap2_.add_attribute<Vec3, CMap2::Vertex>("position");
-	vertex_color_2_ = cmap2_.add_attribute<Vec3, CMap2::Vertex>("color");
+	vertex_normal_0_ = cmap0_.add_attribute<Vec3, CMap0::Vertex>("normal");
+	cmap0_.foreach_cell([&](CMap0::Vertex vertex)
+	{
+		vertex_normal_0_[vertex] = Vec3(0.0f, 0.0f, 1.0f);
+	});
 
-	pivotingBall.getSurface(cmap0_, vertex_position_0_, cmap2_, vertex_position_2_, vertex_color_2_, 0.5);
+	vertex_position_2_ = cmap2_.add_attribute<Vec3, CMap2::Vertex>("position");
+
+	pivotingBall.getSurface(cmap0_, vertex_position_0_, vertex_normal_0_, cmap2_, vertex_position_2_, 2.0);
 
 	cgogn::geometry::compute_AABB(vertex_position_0_, bb_);
 	setSceneRadius(cgogn::geometry::diagonal(bb_).norm()/2.0);
@@ -156,9 +160,9 @@ void Viewer::closeEvent(QCloseEvent*)
 Viewer::Viewer() :
 	cmap2_(),
 	vertex_position_2_(),
-	vertex_color_2_(),
 	cmap0_(),
 	vertex_position_0_(),
+	vertex_normal_0_(), 
 	bb_(),
 	pivotingBall()
 {}
@@ -317,30 +321,19 @@ void Viewer::init()
 		drawer_->vertex3f(bb_.max()[0],bb_.max()[1],bb_.min()[2]);
 		drawer_->vertex3f(bb_.max()[0],bb_.max()[1],bb_.max()[2]);
 	drawer_->end();
-	/*
-	drawer_->point_size(20.0);
-	drawer_->begin(GL_POINTS);
+	
+	drawer_->point_size(1.0);
+	drawer_->begin(GL_LINES);
 	drawer_->color3f(0.0, 0.0, 1.0);
-	for (uint32_t i = 0; i < allPoints.size(); i++)
+	cmap0_.foreach_cell([&](CMap0::Vertex vertex)
 	{
-		auto position = allPoints[i];
+		Vec3 position = vertex_position_0_[vertex];
+		Vec3 normal = vertex_normal_0_[vertex];
+
 		drawer_->vertex3f(position[0], position[1], position[2]);
-	}
-	drawer_->end();*/
-	/*
-	drawer_->begin(GL_TRIANGLES);
-	for (uint32_t i = 0; i < pivotingBall.triangles.size() / 4; i++)
-	{
-		auto color = pivotingBall.triangles[i * 4 + 3];
-		drawer_->color3f(color[0], color[1], color[2]);
-		auto position0 = pivotingBall.triangles[i*4];
-		drawer_->vertex3f(position0[0], position0[1], position0[2]);
-		auto position1 = pivotingBall.triangles[i * 4+1];
-		drawer_->vertex3f(position1[0], position1[1], position1[2]);
-		auto position2 = pivotingBall.triangles[i * 4+2];
-		drawer_->vertex3f(position2[0], position2[1], position2[2]);
-	}
-	drawer_->end();*/
+		drawer_->vertex3f(position[0] + normal[0], position[1] + normal[1], position[2] + normal[2]);
+	});
+	drawer_->end();
 	drawer_->end_list();
 }
 
