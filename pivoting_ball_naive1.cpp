@@ -86,12 +86,12 @@ bool PivotingBallNaive1::GetBallCenter(CMap0::Vertex index0, CMap0::Vertex index
 	return status;
 }
 
-void PivotingBallNaive1::AddEdgeToFront(CMap0::Vertex startVertexId, CMap0::Vertex endVertexId, CMap0::Vertex oppositeVertexId)
+void PivotingBallNaive1::AddEdgeToFront(CMap0::Vertex startVertex, CMap0::Vertex endVertex, CMap0::Vertex oppositeVertex)
 {
 	FrontEdge edge; 
-	edge.startVertexId = startVertexId; 
-	edge.endVertexId = endVertexId;
-	edge.oppositeVertexId = oppositeVertexId;
+	edge.startVertex = startVertex; 
+	edge.endVertex = endVertex;
+	edge.oppositeVertex = oppositeVertex;
 	front.push_back(edge);
 }
 
@@ -100,11 +100,11 @@ void PivotingBallNaive1::RemoveEdgeFromFront(std::list<FrontEdge>::iterator edge
 	front.erase(edge); 
 }
 
-void PivotingBallNaive1::PushTriangle(CMap0::Vertex point0, CMap0::Vertex point1, CMap0::Vertex point2)
+void PivotingBallNaive1::PushTriangle(CMap0::Vertex vertex0, CMap0::Vertex vertex1, CMap0::Vertex vertex2)
 {
-	Vec3 position0 = pointPositions->operator[](point0);
-	Vec3 position1 = pointPositions->operator[](point1);
-	Vec3 position2 = pointPositions->operator[](point2);
+	Vec3 position0 = pointPositions->operator[](vertex0);
+	Vec3 position1 = pointPositions->operator[](vertex1);
+	Vec3 position2 = pointPositions->operator[](vertex2);
 
 	auto face = surface->add_face(3);
 	surfacePositions->operator[](face.dart) = position0;
@@ -112,13 +112,13 @@ void PivotingBallNaive1::PushTriangle(CMap0::Vertex point0, CMap0::Vertex point1
 	surfacePositions->operator[](surface->phi1(surface->phi1(face.dart))) = position2;
 }
 
-std::list<FrontEdge>::iterator PivotingBallNaive1::FindEdgeOnFront(CMap0::Vertex point0, CMap0::Vertex point1)
+std::list<FrontEdge>::iterator PivotingBallNaive1::FindEdgeOnFront(CMap0::Vertex vertex0, CMap0::Vertex vertex1)
 {
 	auto iterator = front.begin();
 	while (iterator != front.end())
 	{
-		if ((iterator->startVertexId.dart == point0.dart && iterator->endVertexId.dart == point1.dart)
-			|| (iterator->startVertexId.dart == point1.dart && iterator->endVertexId.dart == point0.dart))
+		if ((iterator->startVertex.dart == vertex0.dart && iterator->endVertex.dart == vertex1.dart)
+			|| (iterator->startVertex.dart == vertex1.dart && iterator->endVertex.dart == vertex0.dart))
 		{
 			return iterator;
 		}
@@ -127,12 +127,12 @@ std::list<FrontEdge>::iterator PivotingBallNaive1::FindEdgeOnFront(CMap0::Vertex
 	return iterator; 
 }
 
-void PivotingBallNaive1::JoinOrGlueEdge(CMap0::Vertex point0, CMap0::Vertex point1, CMap0::Vertex oppositeVertexId)
+void PivotingBallNaive1::JoinOrGlueEdge(CMap0::Vertex vertex0, CMap0::Vertex vertex1, CMap0::Vertex oppositeVertexId)
 {
-	auto edge = FindEdgeOnFront(point0, point1); 
+	auto edge = FindEdgeOnFront(vertex0, vertex1);
 	if (edge == front.end())
 	{
-		AddEdgeToFront(point0, point1, oppositeVertexId);
+		AddEdgeToFront(vertex0, vertex1, oppositeVertexId);
 	}
 	else
 	{
@@ -140,13 +140,13 @@ void PivotingBallNaive1::JoinOrGlueEdge(CMap0::Vertex point0, CMap0::Vertex poin
 	}
 }
 
-bool PivotingBallNaive1::IsEmpty(CMap0::Vertex index0, CMap0::Vertex index1, CMap0::Vertex index2, Vec3 ballCenter)
+bool PivotingBallNaive1::IsEmpty(CMap0::Vertex vertex0, CMap0::Vertex vertex1, CMap0::Vertex vertex2, Vec3 ballCenter)
 {
-	points->foreach_cell([&](CMap0::Vertex index)
+	points->foreach_cell([&](CMap0::Vertex vertex)
 	{
-		if (index.dart != index0.dart && index.dart != index1.dart && index.dart != index2.dart)
+		if (vertex.dart != vertex0.dart && vertex.dart != vertex1.dart && vertex.dart != vertex2.dart)
 		{
-			Vec3 position = pointPositions->operator[](index);
+			Vec3 position = pointPositions->operator[](vertex);
 			Vec3 dist = (position - ballCenter);
 			if (dist.norm() < ballRadius)
 				return false;
@@ -226,18 +226,18 @@ void PivotingBallNaive1::FinishFront()
 	{
 		auto edge = front.begin();
 
-		CMap0::Vertex startVertexId = edge->startVertexId;
-		CMap0::Vertex endVertexId = edge->endVertexId;
-		CMap0::Vertex oppositeVertexId = edge->oppositeVertexId;
+		CMap0::Vertex startVertex = edge->startVertex;
+		CMap0::Vertex endVertex = edge->endVertex;
+		CMap0::Vertex oppositeVertex = edge->oppositeVertex;
 
-		Vec3 edgeStartPosition = pointPositions->operator[](startVertexId);
-		Vec3 edgeEndPosition = pointPositions->operator[](endVertexId);
-		Vec3 edgeOppositePosition = pointPositions->operator[](oppositeVertexId);
+		Vec3 edgeStartPosition = pointPositions->operator[](startVertex);
+		Vec3 edgeEndPosition = pointPositions->operator[](endVertex);
+		Vec3 edgeOppositePosition = pointPositions->operator[](oppositeVertex);
 
 		Vec3 edgeMiddle = (edgeStartPosition + edgeEndPosition) / 2;
 		Vec3 ballCenter;
 		CMap0::Vertex sequence[3];
-		if (!GetBallCenter(startVertexId, endVertexId, oppositeVertexId, ballCenter, sequence))
+		if (!GetBallCenter(startVertex, endVertex, oppositeVertex, ballCenter, sequence))
 		{
 			exit(1);
 		}
@@ -259,22 +259,22 @@ void PivotingBallNaive1::FinishFront()
 		std::vector<CMap0::Vertex> indices = GetNeighbors(edgeMiddle, ballRadius * 2);
 		for (size_t t = 0; t < indices.size(); t++)
 		{
-			CMap0::Vertex index = indices[t];
-			if (index.dart != startVertexId.dart && index.dart != endVertexId.dart && index.dart != oppositeVertexId.dart)
+			CMap0::Vertex newVertex = indices[t];
+			if (newVertex.dart != startVertex.dart && newVertex.dart != endVertex.dart && newVertex.dart != oppositeVertex.dart)
 			{
-				Vec3 position = pointPositions->operator[](index);
+				Vec3 position = pointPositions->operator[](newVertex);
 				if (plane.absDistance(position) <= ballRadius)
 				{
 					Vec3 center;
 					CMap0::Vertex sequence[3];
-					if (GetBallCenter(startVertexId, endVertexId, index, center, sequence))
+					if (GetBallCenter(startVertex, endVertex, newVertex, center, sequence))
 					{
-						if (IsEmpty(startVertexId, endVertexId, index, center))
+						if (IsEmpty(startVertex, endVertex, newVertex, center))
 						{
 							Vec3 Vij = edgeEndPosition - edgeStartPosition;
 							Vec3 Vik = position - edgeStartPosition;
 							Vec3 faceNormal = Vik.cross(Vij).normalized();
-							if (!IsOriented(faceNormal, pointNormals->operator[](startVertexId), pointNormals->operator[](endVertexId), pointNormals->operator[](index)))
+							if (!IsOriented(faceNormal, pointNormals->operator[](startVertex), pointNormals->operator[](endVertex), pointNormals->operator[](newVertex)))
 							{
 								Vec3 projectedCenter = plane.projection(center);
 								double cosAngle = zeroAngle.dot(projectedCenter.normalized());

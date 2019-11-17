@@ -11,9 +11,9 @@ using Vec3 = Eigen::Vector3d;
 
 struct FrontEdge
 {
-	CMap0::Vertex startVertexId;
-	CMap0::Vertex endVertexId;
-	CMap0::Vertex oppositeVertexId;
+	CMap0::Vertex startVertex;
+	CMap0::Vertex endVertex;
+	CMap0::Vertex oppositeVertex;
 };
 
 class PivotingBallNaive1
@@ -30,19 +30,19 @@ private:
 
 	std::list<FrontEdge> front; 
 
-	bool GetBallCenter(CMap0::Vertex index0, CMap0::Vertex index1, CMap0::Vertex index2, Vec3& center, CMap0::Vertex* sequence);
+	bool GetBallCenter(CMap0::Vertex vertex0, CMap0::Vertex vertex1, CMap0::Vertex vertex2, Vec3& center, CMap0::Vertex* sequence);
 
-	void AddEdgeToFront(CMap0::Vertex startVertexId, CMap0::Vertex endVertexId, CMap0::Vertex oppositeVertexId);
+	void AddEdgeToFront(CMap0::Vertex startVertex, CMap0::Vertex endVertex, CMap0::Vertex oppositeVertex);
 
 	void RemoveEdgeFromFront(std::list<FrontEdge>::iterator edge);
 
-	void PushTriangle(CMap0::Vertex point0, CMap0::Vertex point1, CMap0::Vertex point2);
+	void PushTriangle(CMap0::Vertex vertex0, CMap0::Vertex vertex1, CMap0::Vertex vertex2);
 
-	std::list<FrontEdge>::iterator FindEdgeOnFront(CMap0::Vertex point0, CMap0::Vertex point1);
+	std::list<FrontEdge>::iterator FindEdgeOnFront(CMap0::Vertex vertex0, CMap0::Vertex vertex1);
 
-	void JoinOrGlueEdge(CMap0::Vertex point0, CMap0::Vertex point1, CMap0::Vertex oppositeVertexId);
+	void JoinOrGlueEdge(CMap0::Vertex vertex0, CMap0::Vertex vertex1, CMap0::Vertex oppositeVertexId);
 
-	bool PivotingBallNaive1::IsEmpty(CMap0::Vertex index0, CMap0::Vertex index1, CMap0::Vertex index2, Vec3 ballCenter);
+	bool PivotingBallNaive1::IsEmpty(CMap0::Vertex vertex0, CMap0::Vertex vertex1, CMap0::Vertex vertex2, Vec3 ballCenter);
 
 	std::vector<CMap0::Vertex> GetNeighbors(Vec3 position, float radius);
 
