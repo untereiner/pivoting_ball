@@ -52,51 +52,57 @@ Vec3 PivotingBallNaive0::getEdgeNormal(Vec3 edgeStart, Vec3 edgeEnd, Vec3 otherP
 	return ((edgeStart - otherPoint).normalized() + (edgeEnd - otherPoint).normalized()).normalized();
 }
 
-void PivotingBallNaive0::find_seed_triangle()
+bool PivotingBallNaive0::FindSeed()
 {
 	push_triangle(0, 1, 2, true, true, true);
+	return true; 
 }
 
-void PivotingBallNaive0::finish_front()
+void PivotingBallNaive0::OneFrontIteration()
 {
-	while (front.size() != 0)
+	uint32_t edgeDirection = front.back();
+	front.pop_back();
+	uint32_t edgeEnd = front.back();
+	front.pop_back();
+	uint32_t edgeStart = front.back();
+	front.pop_back();
+
+	Vec3 edgeStartPosition = pointsPosition[edgeStart];
+	Vec3 edgeEndPosition = pointsPosition[edgeEnd];
+	Vec3 thirdPoint = pointsPosition[edgeDirection];
+	Vec3 edgeNormal = getEdgeNormal(edgeStartPosition, edgeEndPosition, thirdPoint).normalized();
+
+	uint32_t bestIndex = UINT32_MAX;
+	double bestDistance = std::numeric_limits<double>::max();
+	for (uint32_t i = 0; i < pointsPosition.size(); i++)
 	{
-		uint32_t edgeDirection = front.back();
-		front.pop_back();
-		uint32_t edgeEnd = front.back();
-		front.pop_back();
-		uint32_t edgeStart = front.back();
-		front.pop_back();
-
-		Vec3 edgeStartPosition = pointsPosition[edgeStart];
-		Vec3 edgeEndPosition = pointsPosition[edgeEnd];
-		Vec3 thirdPoint = pointsPosition[edgeDirection];
-		Vec3 edgeNormal = getEdgeNormal(edgeStartPosition, edgeEndPosition, thirdPoint).normalized();
-
-		uint32_t bestIndex = UINT32_MAX;
-		double bestDistance = std::numeric_limits<double>::max();
-		for (uint32_t i = 0; i < pointsPosition.size(); i++)
+		if (i != edgeDirection && i != edgeStart && i != edgeEnd)
 		{
-			if (i != edgeDirection && i != edgeStart && i != edgeEnd)
+			Vec3 point = pointsPosition[i];
+			double distance = edgePointDistance(edgeStartPosition, edgeEndPosition, point);
+			if (distance < bestDistance)
 			{
-				Vec3 point = pointsPosition[i];
-				double distance = edgePointDistance(edgeStartPosition, edgeEndPosition, point);
-				if (distance < bestDistance)
-				{
-					bestIndex = i;
-					bestDistance = distance;
-				}
+				bestIndex = i;
+				bestDistance = distance;
 			}
 		}
+	}
 
-		if (bestIndex != UINT32_MAX)
-		{
-			push_triangle(edgeStart, bestIndex, edgeEnd, false, true, true);
-		}
+	if (bestIndex != UINT32_MAX)
+	{
+		push_triangle(edgeStart, bestIndex, edgeEnd, false, true, true);
 	}
 }
 
-void PivotingBallNaive0::getSurface
+void PivotingBallNaive0::AllFrontIteration()
+{
+	while (front.size() != 0)
+	{
+		OneFrontIteration(); 
+	}
+}
+
+void PivotingBallNaive0::Initialize
 (
 	CMap0& pointSet, 
 	CMap0::VertexAttribute<Vec3>& pointSetPositions,
@@ -111,9 +117,16 @@ void PivotingBallNaive0::getSurface
 		pointsPosition.push_back(pointSetPositions[vertex]);
 		pointsUsed.push_back(false);
 	});
-	find_seed_triangle();
-	finish_front();
-	
+
+	this->surface = &surface;
+	this->surfacePositions = &surfacePositions;
+}
+
+void PivotingBallNaive0::Complete()
+{
+	FindSeed();
+	AllFrontIteration();
+
 	for (uint32_t i = 0; i < triangles.size() / 4; i++)
 	{
 		auto color = triangles[i * 4 + 3];
@@ -122,10 +135,14 @@ void PivotingBallNaive0::getSurface
 		auto position1 = triangles[i * 4 + 1];
 		auto position2 = triangles[i * 4 + 2];
 
-		auto face = surface.add_face(3);
-		surfacePositions[face.dart] = position0;
-		surfacePositions[surface.phi1(face.dart)] = position1;
-		surfacePositions[surface.phi1(surface.phi1(face.dart))] = position2;
+		auto face = surface->add_face(3);
+		surfacePositions->operator[](face.dart) = position0;
+		surfacePositions->operator[](surface->phi1(face.dart)) = position1;
+		surfacePositions->operator[](surface->phi1(surface->phi1(face.dart))) = position2;
 	}
 
+}
+
+void PivotingBallNaive0::Debug(std::unique_ptr<cgogn::rendering::DisplayListDrawer>& drawer)
+{
 }

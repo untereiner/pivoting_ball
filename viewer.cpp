@@ -135,7 +135,8 @@ void Viewer::import(const std::string& point_set)
 
 	vertex_position_2_ = cmap2_.add_attribute<Vec3, CMap2::Vertex>("position");
 
-	pivotingBall.getSurface(cmap0_, vertex_position_0_, vertex_normal_0_, cmap2_, vertex_position_2_, 2.0);
+	pivotingBall.Initialize(cmap0_, vertex_position_0_, vertex_normal_0_, cmap2_, vertex_position_2_, 2.0);
+	pivotingBall.FindSeed();
 
 	cgogn::geometry::compute_AABB(vertex_position_0_, bb_);
 	setSceneRadius(cgogn::geometry::diagonal(bb_).norm()/2.0);
@@ -172,7 +173,8 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
 	switch (ev->key())
 	{
 		case Qt::Key_F:
-			flat_rendering_ = !flat_rendering_;
+			pivotingBall.OneFrontIteration(); 
+			update_surface(); 
 			break;
 		case Qt::Key_E:
 			edge_rendering_ = !edge_rendering_;
@@ -254,6 +256,48 @@ void Viewer::update_surface()
 	render_2_->init_primitives(cmap2_, cgogn::rendering::POINTS);
 	render_2_->init_primitives(cmap2_, cgogn::rendering::LINES);
 	render_2_->init_primitives(cmap2_, cgogn::rendering::TRIANGLES, &vertex_position_2_);
+
+	drawer_->new_list();
+	drawer_->line_width_aa(2.0);
+	drawer_->begin(GL_LINE_LOOP);
+	drawer_->color3f(1.0, 1.0, 1.0);
+	drawer_->vertex3f(bb_.min()[0], bb_.min()[1], bb_.min()[2]);
+	drawer_->vertex3f(bb_.max()[0], bb_.min()[1], bb_.min()[2]);
+	drawer_->vertex3f(bb_.max()[0], bb_.max()[1], bb_.min()[2]);
+	drawer_->vertex3f(bb_.min()[0], bb_.max()[1], bb_.min()[2]);
+	drawer_->vertex3f(bb_.min()[0], bb_.max()[1], bb_.max()[2]);
+	drawer_->vertex3f(bb_.max()[0], bb_.max()[1], bb_.max()[2]);
+	drawer_->vertex3f(bb_.max()[0], bb_.min()[1], bb_.max()[2]);
+	drawer_->vertex3f(bb_.min()[0], bb_.min()[1], bb_.max()[2]);
+	drawer_->end();
+	drawer_->begin(GL_LINES);
+	drawer_->color3f(1.0, 1.0, 1.0);
+	drawer_->vertex3f(bb_.min()[0], bb_.min()[1], bb_.min()[2]);
+	drawer_->vertex3f(bb_.min()[0], bb_.max()[1], bb_.min()[2]);
+	drawer_->vertex3f(bb_.min()[0], bb_.min()[1], bb_.max()[2]);
+	drawer_->vertex3f(bb_.min()[0], bb_.max()[1], bb_.max()[2]);
+	drawer_->vertex3f(bb_.max()[0], bb_.min()[1], bb_.min()[2]);
+	drawer_->vertex3f(bb_.max()[0], bb_.min()[1], bb_.max()[2]);
+	drawer_->vertex3f(bb_.max()[0], bb_.max()[1], bb_.min()[2]);
+	drawer_->vertex3f(bb_.max()[0], bb_.max()[1], bb_.max()[2]);
+	drawer_->end();
+
+	drawer_->point_size(1.0);
+	drawer_->begin(GL_LINES);
+	drawer_->color3f(0.0, 0.0, 1.0);
+	cmap0_.foreach_cell([&](CMap0::Vertex vertex)
+	{
+		Vec3 position = vertex_position_0_[vertex];
+		Vec3 normal = vertex_normal_0_[vertex];
+
+		drawer_->vertex3f(position[0], position[1], position[2]);
+		drawer_->vertex3f(position[0] + normal[0], position[1] + normal[1], position[2] + normal[2]);
+	});
+	drawer_->end();
+
+	pivotingBall.Debug(drawer_);
+
+	drawer_->end_list();
 }
 
 void Viewer::init()
@@ -292,49 +336,12 @@ void Viewer::init()
 	param_flat_->back_color_ = QColor(200,0,0);
 	param_flat_->ambiant_color_ = QColor(5,5,5);
 
-	update_surface();
-
 	// drawer for simple old-school g1 rendering
 	drawer_ = cgogn::make_unique<cgogn::rendering::DisplayListDrawer>();
-	drawer_rend_= drawer_->generate_renderer();
-	drawer_->new_list();
-	drawer_->line_width_aa(2.0);
-	drawer_->begin(GL_LINE_LOOP);
-		drawer_->color3f(1.0,1.0,1.0);
-		drawer_->vertex3f(bb_.min()[0],bb_.min()[1],bb_.min()[2]);
-		drawer_->vertex3f(bb_.max()[0],bb_.min()[1],bb_.min()[2]);
-		drawer_->vertex3f(bb_.max()[0],bb_.max()[1],bb_.min()[2]);
-		drawer_->vertex3f(bb_.min()[0],bb_.max()[1],bb_.min()[2]);
-		drawer_->vertex3f(bb_.min()[0],bb_.max()[1],bb_.max()[2]);
-		drawer_->vertex3f(bb_.max()[0],bb_.max()[1],bb_.max()[2]);
-		drawer_->vertex3f(bb_.max()[0],bb_.min()[1],bb_.max()[2]);
-		drawer_->vertex3f(bb_.min()[0],bb_.min()[1],bb_.max()[2]);
-	drawer_->end();
-	drawer_->begin(GL_LINES);
-	drawer_->color3f(1.0,1.0,1.0);
-		drawer_->vertex3f(bb_.min()[0],bb_.min()[1],bb_.min()[2]);
-		drawer_->vertex3f(bb_.min()[0],bb_.max()[1],bb_.min()[2]);
-		drawer_->vertex3f(bb_.min()[0],bb_.min()[1],bb_.max()[2]);
-		drawer_->vertex3f(bb_.min()[0],bb_.max()[1],bb_.max()[2]);
-		drawer_->vertex3f(bb_.max()[0],bb_.min()[1],bb_.min()[2]);
-		drawer_->vertex3f(bb_.max()[0],bb_.min()[1],bb_.max()[2]);
-		drawer_->vertex3f(bb_.max()[0],bb_.max()[1],bb_.min()[2]);
-		drawer_->vertex3f(bb_.max()[0],bb_.max()[1],bb_.max()[2]);
-	drawer_->end();
+	drawer_rend_= drawer_->generate_renderer();	
 	
-	drawer_->point_size(1.0);
-	drawer_->begin(GL_LINES);
-	drawer_->color3f(0.0, 0.0, 1.0);
-	cmap0_.foreach_cell([&](CMap0::Vertex vertex)
-	{
-		Vec3 position = vertex_position_0_[vertex];
-		Vec3 normal = vertex_normal_0_[vertex];
+	update_surface();
 
-		drawer_->vertex3f(position[0], position[1], position[2]);
-		drawer_->vertex3f(position[0] + normal[0], position[1] + normal[1], position[2] + normal[2]);
-	});
-	drawer_->end();
-	drawer_->end_list();
 }
 
 int main(int argc, char** argv)

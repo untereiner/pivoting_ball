@@ -1,20 +1,14 @@
 #pragma once
 
-#include <cgogn/core/cmap/cmap0.h>
-#include <cgogn/core/cmap/cmap2.h>
 #include <Eigen/Dense>
 #include <math.h>
+#include <cgogn/core/cmap/cmap0.h>
+#include <cgogn/core/cmap/cmap2.h>
+#include <cgogn/rendering/drawer.h>
 
 using CMap0 = cgogn::CMap0;
 using CMap2 = cgogn::CMap2;
 using Vec3 = Eigen::Vector3d;
-
-struct FrontEdge
-{
-	CMap0::Vertex startVertex;
-	CMap0::Vertex endVertex;
-	CMap0::Vertex oppositeVertex;
-};
 
 class PivotingBallNaive1
 {
@@ -24,34 +18,32 @@ private:
 	CMap0* points; 
 	CMap0::VertexAttribute<Vec3>* pointPositions;
 	CMap0::VertexAttribute<Vec3>* pointNormals;
+	//CMap0::VertexAttribute<std::vector<std::list<CMap2::Edge>::iterator>> pointFrontEdges;
 
 	CMap2* surface; 
 	CMap2::VertexAttribute<Vec3>* surfacePositions;
+	CMap2::VertexAttribute<CMap0::Vertex> surfaceVertexes;
 
-	std::list<FrontEdge> front; 
+	bool GetBallCenter(CMap0::Vertex vertex0, CMap0::Vertex vertex1, CMap0::Vertex vertex2, Vec3& center, CMap0::Vertex* order);
 
-	bool GetBallCenter(CMap0::Vertex vertex0, CMap0::Vertex vertex1, CMap0::Vertex vertex2, Vec3& center, CMap0::Vertex* sequence);
+	void AddFrontEdge(CMap2::Edge edge);
 
-	void AddEdgeToFront(CMap0::Vertex startVertex, CMap0::Vertex endVertex, CMap0::Vertex oppositeVertex);
+	void RemoveFrontEdge(std::list<CMap2::Edge>::iterator edge);
 
-	void RemoveEdgeFromFront(std::list<FrontEdge>::iterator edge);
+	std::list<CMap2::Edge>::iterator FindFrontEdge(CMap2::Edge edge);
 
-	void PushTriangle(CMap0::Vertex vertex0, CMap0::Vertex vertex1, CMap0::Vertex vertex2);
+	void JoinOrGlueEdge(CMap2::Edge edge);
 
-	std::list<FrontEdge>::iterator FindEdgeOnFront(CMap0::Vertex vertex0, CMap0::Vertex vertex1);
-
-	void JoinOrGlueEdge(CMap0::Vertex vertex0, CMap0::Vertex vertex1, CMap0::Vertex oppositeVertexId);
+	CMap2::Face AddTriangle(CMap0::Vertex vertex0, CMap0::Vertex vertex1, CMap0::Vertex vertex2);
 
 	bool PivotingBallNaive1::IsEmpty(CMap0::Vertex vertex0, CMap0::Vertex vertex1, CMap0::Vertex vertex2, Vec3 ballCenter);
 
 	std::vector<CMap0::Vertex> GetNeighbors(Vec3 position, float radius);
 
-	bool FindSeed();
-
-	void FinishFront();
-
 public:
-	void getSurface
+	std::list<CMap2::Edge> front;
+
+	void Initialize
 	(
 		CMap0& pointSet,
 		CMap0::VertexAttribute<Vec3>& pointSetPositions,
@@ -60,4 +52,14 @@ public:
 		CMap2::VertexAttribute<Vec3>& surfacePositions,
 		float ballRadius
 	);
+
+	bool FindSeed();
+
+	void OneFrontIteration();
+
+	void AllFrontIteration();
+
+	void Complete();
+
+	void Debug(std::unique_ptr<cgogn::rendering::DisplayListDrawer>& drawer);
 };
