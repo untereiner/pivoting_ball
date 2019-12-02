@@ -26,6 +26,7 @@
 #include <QKeyEvent>
 
 #include <QOGLViewer/qoglviewer.h>
+#include <QPainter>
 #include <cgogn/core/cmap/cmap0.h>
 #include <cgogn/core/cmap/cmap2.h>
 
@@ -75,11 +76,15 @@ public:
 
 	void update_surface();
 
+	void drawText(double x, double y, QString str); 
+
 private:
 	//2d
 	CMap2 cmap2_;
 	CMap2::VertexAttribute<Vec3> vertex_position_2_;
+
 	PivotingBallNaive1 pivotingBall; 
+	bool hasSeed; 
 
 	std::unique_ptr<cgogn::rendering::MapRender> render_2_ {nullptr};
 	std::unique_ptr<cgogn::rendering::VBO> vbo_pos_2_ {nullptr};
@@ -136,7 +141,6 @@ void Viewer::import(const std::string& point_set)
 	vertex_position_2_ = cmap2_.add_attribute<Vec3, CMap2::Vertex>("position");
 
 	pivotingBall.Initialize(cmap0_, vertex_position_0_, vertex_normal_0_, cmap2_, vertex_position_2_, 2.0);
-	pivotingBall.FindSeed();
 
 	cgogn::geometry::compute_AABB(vertex_position_0_, bb_);
 	setSceneRadius(cgogn::geometry::diagonal(bb_).norm()/2.0);
@@ -165,16 +169,43 @@ Viewer::Viewer() :
 	vertex_position_0_(),
 	vertex_normal_0_(), 
 	bb_(),
-	pivotingBall()
+	pivotingBall(),
+	hasSeed(false)
 {}
 
 void Viewer::keyPressEvent(QKeyEvent *ev)
 {
 	switch (ev->key())
 	{
+		case Qt::Key_S:
+			if (!hasSeed)
+			{
+				hasSeed = pivotingBall.FindSeed();
+				update_surface();
+			}	
+			break;
+		case Qt::Key_A:
+			if (hasSeed)
+			{
+				if (!pivotingBall.FrontIsEmpty())
+				{
+					pivotingBall.OneFrontIteration();
+				}
+				if (pivotingBall.FrontIsEmpty())
+					hasSeed = false; 
+				update_surface();
+			}
+			break;
 		case Qt::Key_F:
-			pivotingBall.OneFrontIteration(); 
-			update_surface(); 
+			if (hasSeed)
+			{
+				while (!pivotingBall.FrontIsEmpty())
+				{
+					pivotingBall.OneFrontIteration();
+				}
+				hasSeed = false; 
+				update_surface();
+			}
 			break;
 		case Qt::Key_E:
 			edge_rendering_ = !edge_rendering_;
@@ -184,9 +215,6 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
 			break;
 		case Qt::Key_B:
 			bb_rendering_ = !bb_rendering_;
-			break;
-		case Qt::Key_S:
-			point_set_rendering_ = !point_set_rendering_;
 			break;
 		case Qt::Key_X:
 		{
@@ -201,6 +229,20 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
 	QOGLViewer::keyPressEvent(ev);
 	//update drawing
 	update();
+}
+
+void Viewer::drawText(double x, double y, QString text)
+{
+	QFont font; 
+
+	QColor fontColor = QColor(255,255,255);
+
+	// Render text
+	QPainter painter(this);
+	painter.setPen(fontColor);
+	painter.setFont(font);
+	painter.drawText(x, y, text);
+	painter.end();
 }
 
 void Viewer::draw()
@@ -247,6 +289,10 @@ void Viewer::draw()
 
 	if (bb_rendering_)
 		drawer_rend_->draw(proj,view);
+
+	this->drawText(0, 10, QString("Appuyez sur S pour trouver un seed"));
+	this->drawText(0, 20, QString("Appuyez sur A pour faire avancer le front"));
+	this->drawText(0, 30, QString("Appuyez sur F pour finir le front"));
 }
 
 void Viewer::update_surface()

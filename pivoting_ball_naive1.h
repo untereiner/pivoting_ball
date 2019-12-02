@@ -55,9 +55,9 @@ public:
 
 	bool FindSeed();
 
-	void OneFrontIteration();
+	bool FrontIsEmpty();
 
-	void AllFrontIteration();
+	void OneFrontIteration();
 
 	void Complete();
 

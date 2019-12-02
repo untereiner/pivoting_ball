@@ -94,12 +94,9 @@ void PivotingBallNaive0::OneFrontIteration()
 	}
 }
 
-void PivotingBallNaive0::AllFrontIteration()
+bool PivotingBallNaive0::FrontIsEmpty()
 {
-	while (front.size() != 0)
-	{
-		OneFrontIteration(); 
-	}
+	return front.size() == 0;
 }
 
 void PivotingBallNaive0::Initialize
@@ -125,8 +122,10 @@ void PivotingBallNaive0::Initialize
 void PivotingBallNaive0::Complete()
 {
 	FindSeed();
-	AllFrontIteration();
-
+	while (!FrontIsEmpty())
+	{
+		OneFrontIteration();
+	}
 	for (uint32_t i = 0; i < triangles.size() / 4; i++)
 	{
 		auto color = triangles[i * 4 + 3];

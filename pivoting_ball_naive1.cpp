@@ -317,6 +317,11 @@ bool PivotingBallNaive1::FindSeed()
 	return found; 
 }
 
+bool PivotingBallNaive1::FrontIsEmpty()
+{
+	return front.empty(); 
+}
+
 void PivotingBallNaive1::OneFrontIteration()
 {
 	auto edge = front.begin();
@@ -402,19 +407,14 @@ void PivotingBallNaive1::OneFrontIteration()
 	}
 }
 
-void PivotingBallNaive1::AllFrontIteration()
-{
-	while (!front.empty())
-	{
-		OneFrontIteration(); 
-	}
-}
-
 void PivotingBallNaive1::Complete()
 {
 	if (FindSeed())
 	{
-		AllFrontIteration();
+		while (!FrontIsEmpty())
+		{
+			OneFrontIteration(); 
+		}
 	}
 	else
 	{
