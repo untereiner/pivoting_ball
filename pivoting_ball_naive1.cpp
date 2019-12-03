@@ -40,13 +40,13 @@ bool IsOriented(Vec3 normal, Vec3 normal0, Vec3 normal1, Vec3 normal2)
 	return count <= 1;
 }
 
-bool PivotingBallNaive1::GetBallCenter(CMap0::Vertex index0, CMap0::Vertex index1, CMap0::Vertex index2, Vec3& center, CMap0::Vertex* order)
+bool PivotingBallNaive1::GetBallCenter(Vertex index0, Vertex index1, Vertex index2, Vec3& center, Vertex* order)
 {
 	bool status = false;
 
-	Vec3 p0 = pointPositions->operator[](index0);
-	Vec3 p1 = pointPositions->operator[](index1);
-	Vec3 p2 = pointPositions->operator[](index2);
+	Vec3 p0 = pointPositions[index0];
+	Vec3 p1 = pointPositions[index1];
+	Vec3 p2 = pointPositions[index2];
 	order[0] = index0;
 	order[1] = index1;
 	order[2] = index2;
@@ -58,7 +58,7 @@ bool PivotingBallNaive1::GetBallCenter(CMap0::Vertex index0, CMap0::Vertex index
 	if (normal.norm() > COMPARISON_EPSILON)
 	{
 		normal.normalize();
-		if (!IsOriented(normal, pointNormals->operator[](index0), pointNormals->operator[](index1), pointNormals->operator[](index2)))
+		if (!IsOriented(normal, pointNormals[index0], pointNormals[index1], pointNormals[index2]))
 		{
 			auto temp = p0; 
 			p0 = p1;
@@ -89,88 +89,42 @@ bool PivotingBallNaive1::GetBallCenter(CMap0::Vertex index0, CMap0::Vertex index
 void PivotingBallNaive1::AddFrontEdge(CMap2::Edge edge)
 {
 	front.push_back(edge);
-	/*
+	
 	auto iterator = front.end(); 
-	--iterator; */
+	--iterator; 
 
-	/*
 	CMap2::Vertex startVertex2 = CMap2::Vertex(edge.dart);
-	CMap0::Vertex startVertex0 = surfaceVertexes[startVertex2];
-	pointFrontEdges[startVertex0].push_back(iterator);*/
+	Vertex startVertex0 = surfaceVertexes[startVertex2];
+	pointFrontEdges[startVertex0].push_back(iterator);
 }
 
 void PivotingBallNaive1::RemoveFrontEdge(std::list<CMap2::Edge>::iterator edge)
 {
-	/*
 	CMap2::Vertex startVertex2 = CMap2::Vertex(edge->dart);
-	CMap0::Vertex startVertex0 = surfaceVertexes[startVertex2];
-	pointFrontEdges[startVertex0].remove(edge);*/
+	Vertex startVertex0 = surfaceVertexes[startVertex2];
+	pointFrontEdges[startVertex0].remove(edge);
 
 	front.erase(edge); 
 }
 
 std::list<CMap2::Edge>::iterator PivotingBallNaive1::FindFrontEdge(CMap2::Edge edge)
 {
-	CMap0::Vertex startVertex = surfaceVertexes[CMap2::Vertex(edge.dart)];
-	CMap0::Vertex endVertex = surfaceVertexes[CMap2::Vertex(surface->phi1(edge.dart))];
-	/*
+	Vertex startVertex = surfaceVertexes[CMap2::Vertex(edge.dart)];
+	Vertex endVertex = surfaceVertexes[CMap2::Vertex(surface->phi1(edge.dart))];
+	
 	std::list<std::list<CMap2::Edge>::iterator>& frontEdges = pointFrontEdges[endVertex];
 	auto iterator = frontEdges.begin();
 	while (iterator != frontEdges.end())
 	{
-		CMap0::Vertex otherEndVertex = surfaceVertexes[CMap2::Vertex(surface->phi1((*iterator)->dart))];
-		if (otherEndVertex.dart == startVertex.dart)
+		Vertex otherEndVertex = surfaceVertexes[CMap2::Vertex(surface->phi1((*iterator)->dart))];
+		if (otherEndVertex == startVertex)
 		{
 			return *iterator;
 		}
 		++iterator;
-	}*/
-	/*
-	if (!vertex.dart.is_nil())
-	{
-		bool found = false;
-		auto iterator = front.begin();
-
-		int count = 0;
-		surface->foreach_incident_edge(vertex, [&](CMap2::Edge edge)
-		{
-			CMap0::Vertex otherStartVertex = surfaceVertexes[CMap2::Vertex(edge.dart)];
-			CMap0::Vertex otherEndVertex = surfaceVertexes[CMap2::Vertex(surface->phi1(edge.dart))];
-
-			if (otherEndVertex.dart == startVertex.dart || otherStartVertex.dart == startVertex.dart)
-			{
-				found = true;
-
-				while (iterator != front.end() && iterator->dart != edge.dart && iterator->dart != surface->phi2(edge.dart))
-				{
-					++iterator;
-				}
-			}
-			count++;
-
-		});
-
-		cgogn_log_error("count: ") << std::to_string(count);
-
-		if (found)
-			return iterator;
-	}*/
-
-	//return front.end();
-
-	auto iterator = front.begin();
-	while (iterator != front.end())
-	{
-		CMap0::Vertex otherStartVertex = surfaceVertexes[CMap2::Vertex(iterator->dart)];
-		CMap0::Vertex otherEndVertex = surfaceVertexes[CMap2::Vertex(surface->phi1(iterator->dart))];
-		if (otherStartVertex.dart == endVertex.dart && otherEndVertex.dart == startVertex.dart)
-		{
-			return iterator;
-		}
-		++iterator;
 	}
-	return iterator;
 
+	return front.end();
 }
 
 void PivotingBallNaive1::JoinOrGlueEdge(CMap2::Edge edge)
@@ -187,7 +141,7 @@ void PivotingBallNaive1::JoinOrGlueEdge(CMap2::Edge edge)
 	}
 }
 
-CMap2::Face PivotingBallNaive1::AddTriangle(CMap0::Vertex vertex0, CMap0::Vertex vertex1, CMap0::Vertex vertex2)
+CMap2::Face PivotingBallNaive1::AddTriangle(Vertex vertex0, Vertex vertex1, Vertex vertex2)
 {
 	CMap2::Face face = surface->add_face(3);
 
@@ -195,9 +149,9 @@ CMap2::Face PivotingBallNaive1::AddTriangle(CMap0::Vertex vertex0, CMap0::Vertex
 	CMap2::Edge edge1 = CMap2::Edge(surface->phi1(edge0.dart));
 	CMap2::Edge edge2 = CMap2::Edge(surface->phi1(edge1.dart));
 
-	surfacePositions->operator[](edge0.dart) = pointPositions->operator[](vertex0);
-	surfacePositions->operator[](edge1.dart) = pointPositions->operator[](vertex1);
-	surfacePositions->operator[](edge2.dart) = pointPositions->operator[](vertex2);
+	surfacePositions->operator[](edge0.dart) = pointPositions[vertex0];
+	surfacePositions->operator[](edge1.dart) = pointPositions[vertex1];
+	surfacePositions->operator[](edge2.dart) = pointPositions[vertex2];
 
 	surfaceVertexes[edge0.dart] = vertex0;
 	surfaceVertexes[edge1.dart] = vertex1;
@@ -210,35 +164,35 @@ CMap2::Face PivotingBallNaive1::AddTriangle(CMap0::Vertex vertex0, CMap0::Vertex
 	return face; 
 }
 
-bool PivotingBallNaive1::IsEmpty(CMap0::Vertex vertex0, CMap0::Vertex vertex1, CMap0::Vertex vertex2, Vec3 ballCenter)
+bool PivotingBallNaive1::IsEmpty(Vertex vertex0, Vertex vertex1, Vertex vertex2, Vec3 ballCenter)
 {
 	bool isEmpty = true;
 
-	points->foreach_cell([&](CMap0::Vertex vertex)
+	for (Vertex vertex = 0; vertex < pointCount; vertex++)
 	{
-		if (vertex.dart != vertex0.dart && vertex.dart != vertex1.dart && vertex.dart != vertex2.dart)
+		if (vertex != vertex0 && vertex != vertex1 && vertex != vertex2)
 		{
-			Vec3 position = pointPositions->operator[](vertex);
+			Vec3 position = pointPositions[vertex];
 			Vec3 dist = (position - ballCenter);
 			if (dist.norm() < ballRadius)
 				isEmpty = false;
 		}
-	}); 
+	}
 
 	return isEmpty;
 }
 
-std::vector<CMap0::Vertex> PivotingBallNaive1::GetNeighbors(Vec3 position, float radius)
+std::vector<PivotingBallNaive1::Vertex> PivotingBallNaive1::GetNeighbors(Vec3 position, float radius)
 {
-	std::vector<CMap0::Vertex> neighbors;
-	points->foreach_cell([&](CMap0::Vertex index1)
+	std::vector<Vertex> neighbors;
+	for (Vertex vertex = 0; vertex < pointCount; vertex++)
 	{
-		Vec3 position1 = pointPositions->operator[](index1);
+		Vec3 position1 = pointPositions[vertex];
 		if ((position1 - position).norm() < radius)
 		{
-			neighbors.push_back(index1);
+			neighbors.push_back(vertex);
 		}
-	}); 
+	}
 	return neighbors;
 }
 
@@ -252,22 +206,27 @@ void PivotingBallNaive1::Initialize
 	float ballRadius
 )
 {
-	this->points = &points;
-	this->pointPositions = &pointPositions;
-	this->pointNormals = &pointNormals;
+	pointCount = 0; 
+	points.foreach_cell([&](CMap0::Vertex vertex)
+	{
+		pointCount++;
+	});
+	this->pointPositions.resize(pointCount);
+	this->pointNormals.resize(pointCount);
+	this->pointFrontEdges.resize(pointCount); 
+	Vertex current = 0; 
+	points.foreach_cell([&](CMap0::Vertex vertex)
+	{
+		this->pointPositions[current] = pointPositions[vertex];
+		this->pointNormals[current] = pointNormals[vertex];
+		current++;
+	});
 
 	this->surface = &surface;
 	this->surfacePositions = &surfacePositions;
 	this->ballRadius = ballRadius;
 
-	/*pointFrontEdges = points.add_attribute<std::vector<std::list<CMap2::Edge>::iterator>, CMap0::Vertex>("vertexes");
-
-	points.foreach_cell([&](CMap0::Vertex vertex)
-	{
-		pointFrontEdges[vertex] = std::vector<std::list<CMap2::Edge>::iterator>();
-	});*/
-
-	surfaceVertexes = surface.add_attribute<CMap0::Vertex, CMap2::Vertex>("vertexes");
+	surfaceVertexes = surface.add_attribute<Vertex, CMap2::Vertex>("vertexes");
 }
 
 bool PivotingBallNaive1::FindSeed()
@@ -276,28 +235,28 @@ bool PivotingBallNaive1::FindSeed()
 
 	bool found = false;
 
-	points->foreach_cell([&](CMap0::Vertex vertex0)
+	for (Vertex vertex0 = 0; vertex0 < pointCount; vertex0++)
 	{
-		Vec3 position0 = pointPositions->operator[](vertex0);
+		Vec3 position0 = pointPositions[vertex0];
 
-		std::vector<CMap0::Vertex> neighbors = GetNeighbors(position0, ballRadius * neighborhoodSize);
+		std::vector<Vertex> neighbors = GetNeighbors(position0, ballRadius * neighborhoodSize);
 
 		if (3 <= neighbors.size())
 		{
 			for (size_t j = 0; j < neighbors.size() && !found; j++)
 			{
-				CMap0::Vertex vertex1 = neighbors[j];
-				if (vertex1.dart != vertex0.dart)
+				Vertex vertex1 = neighbors[j];
+				if (vertex1 != vertex0)
 				{
 					for (size_t k = 0; k < neighbors.size() && !found; k++)
 					{
 						if (j != k)
 						{
-							CMap0::Vertex vertex2 = neighbors[k];
-							if (vertex2.dart != vertex0.dart)
+							Vertex vertex2 = neighbors[k];
+							if (vertex2 != vertex0)
 							{
 								Vec3 center;
-								CMap0::Vertex order[3];
+								Vertex order[3];
 								if (GetBallCenter(vertex0, vertex1, vertex2, center, order))
 								{
 									if (IsEmpty(vertex0, vertex1, vertex2, center))
@@ -312,7 +271,7 @@ bool PivotingBallNaive1::FindSeed()
 				}
 			}
 		}
-	}); 
+	}
 
 	return found; 
 }
@@ -326,17 +285,17 @@ void PivotingBallNaive1::OneFrontIteration()
 {
 	auto edge = front.begin();
 
-	CMap0::Vertex startVertex = surfaceVertexes[CMap2::Vertex(edge->dart)];
-	CMap0::Vertex endVertex = surfaceVertexes[CMap2::Vertex(surface->phi1(edge->dart))];
-	CMap0::Vertex oppositeVertex = surfaceVertexes[CMap2::Vertex(surface->phi1(surface->phi1(edge->dart)))];
+	Vertex startVertex = surfaceVertexes[CMap2::Vertex(edge->dart)];
+	Vertex endVertex = surfaceVertexes[CMap2::Vertex(surface->phi1(edge->dart))];
+	Vertex oppositeVertex = surfaceVertexes[CMap2::Vertex(surface->phi1(surface->phi1(edge->dart)))];
 
-	Vec3 edgeStartPosition = pointPositions->operator[](startVertex);
-	Vec3 edgeEndPosition = pointPositions->operator[](endVertex);
-	Vec3 edgeOppositePosition = pointPositions->operator[](oppositeVertex);
+	Vec3 edgeStartPosition = pointPositions[startVertex];
+	Vec3 edgeEndPosition = pointPositions[endVertex];
+	Vec3 edgeOppositePosition = pointPositions[oppositeVertex];
 
 	Vec3 edgeMiddle = (edgeStartPosition + edgeEndPosition) / 2;
 	Vec3 ballCenter;
-	CMap0::Vertex order[3];
+	Vertex order[3];
 	if (!GetBallCenter(startVertex, endVertex, oppositeVertex, ballCenter, order))
 	{
 		exit(1);
@@ -353,20 +312,20 @@ void PivotingBallNaive1::OneFrontIteration()
 	zeroAngle = plane.projection(zeroAngle).normalized();
 
 	bool oneFound = false;
-	CMap0::Vertex bestOrder[3];
+	Vertex bestOrder[3];
 	double bestAngle = M_PI;
 
-	std::vector<CMap0::Vertex> neighbors = GetNeighbors(edgeMiddle, ballRadius * 2);
+	std::vector<Vertex> neighbors = GetNeighbors(edgeMiddle, ballRadius * 2);
 	for (size_t t = 0; t < neighbors.size(); t++)
 	{
-		CMap0::Vertex newVertex = neighbors[t];
-		if (newVertex.dart != startVertex.dart && newVertex.dart != endVertex.dart && newVertex.dart != oppositeVertex.dart)
+		Vertex newVertex = neighbors[t];
+		if (newVertex != startVertex && newVertex != endVertex && newVertex != oppositeVertex)
 		{
-			Vec3 position = pointPositions->operator[](newVertex);
+			Vec3 position = pointPositions[newVertex];
 			if (plane.absDistance(position) <= ballRadius)
 			{
 				Vec3 center;
-				CMap0::Vertex order[3];
+				Vertex order[3];
 				if (GetBallCenter(startVertex, endVertex, newVertex, center, order))
 				{
 					if (IsEmpty(startVertex, endVertex, newVertex, center))
@@ -374,7 +333,7 @@ void PivotingBallNaive1::OneFrontIteration()
 						Vec3 Vij = edgeEndPosition - edgeStartPosition;
 						Vec3 Vik = position - edgeStartPosition;
 						Vec3 faceNormal = Vik.cross(Vij).normalized();
-						if (!IsOriented(faceNormal, pointNormals->operator[](startVertex), pointNormals->operator[](endVertex), pointNormals->operator[](newVertex)))
+						if (!IsOriented(faceNormal, pointNormals[startVertex], pointNormals[endVertex], pointNormals[newVertex]))
 						{
 							Vec3 projectedCenter = plane.projection(center);
 							double cosAngle = zeroAngle.dot(projectedCenter.normalized());
@@ -442,11 +401,11 @@ void PivotingBallNaive1::Debug(std::unique_ptr<cgogn::rendering::DisplayListDraw
 	{
 		CMap2::Edge edge = *frontEdge; 
 
-		CMap0::Vertex startVertex = surfaceVertexes[CMap2::Vertex(edge.dart)];
-		CMap0::Vertex endVertex = surfaceVertexes[CMap2::Vertex(surface->phi1(edge.dart))];
+		Vertex startVertex = surfaceVertexes[CMap2::Vertex(edge.dart)];
+		Vertex endVertex = surfaceVertexes[CMap2::Vertex(surface->phi1(edge.dart))];
 
-		Vec3 startPosition = pointPositions->operator[](startVertex);
-		Vec3 endPosition = pointPositions->operator[](endVertex);
+		Vec3 startPosition = pointPositions[startVertex];
+		Vec3 endPosition = pointPositions[endVertex];
 
 		drawer->vertex3f(startPosition[0], startPosition[1], startPosition[2]);
 		drawer->vertex3f(endPosition[0], endPosition[1], endPosition[2]);

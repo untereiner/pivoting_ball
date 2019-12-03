@@ -13,18 +13,19 @@ using Vec3 = Eigen::Vector3d;
 class PivotingBallNaive1
 {
 private:
+	using Vertex = uint32_t;
 
 	float ballRadius;
-	CMap0* points; 
-	CMap0::VertexAttribute<Vec3>* pointPositions;
-	CMap0::VertexAttribute<Vec3>* pointNormals;
-	//CMap0::VertexAttribute<std::vector<std::list<CMap2::Edge>::iterator>> pointFrontEdges;
+	uint32_t pointCount; 
+	std::vector<Vec3> pointPositions; 
+	std::vector<Vec3> pointNormals; 
+	std::vector<std::list<std::list<CMap2::Edge>::iterator>> pointFrontEdges;
 
 	CMap2* surface; 
 	CMap2::VertexAttribute<Vec3>* surfacePositions;
-	CMap2::VertexAttribute<CMap0::Vertex> surfaceVertexes;
+	CMap2::VertexAttribute<Vertex> surfaceVertexes;
 
-	bool GetBallCenter(CMap0::Vertex vertex0, CMap0::Vertex vertex1, CMap0::Vertex vertex2, Vec3& center, CMap0::Vertex* order);
+	bool GetBallCenter(Vertex vertex0, Vertex vertex1, Vertex vertex2, Vec3& center, Vertex* order);
 
 	void AddFrontEdge(CMap2::Edge edge);
 
@@ -34,11 +35,11 @@ private:
 
 	void JoinOrGlueEdge(CMap2::Edge edge);
 
-	CMap2::Face AddTriangle(CMap0::Vertex vertex0, CMap0::Vertex vertex1, CMap0::Vertex vertex2);
+	CMap2::Face AddTriangle(Vertex vertex0, Vertex vertex1, Vertex vertex2);
 
-	bool PivotingBallNaive1::IsEmpty(CMap0::Vertex vertex0, CMap0::Vertex vertex1, CMap0::Vertex vertex2, Vec3 ballCenter);
+	bool PivotingBallNaive1::IsEmpty(Vertex vertex0, Vertex vertex1, Vertex vertex2, Vec3 ballCenter);
 
-	std::vector<CMap0::Vertex> GetNeighbors(Vec3 position, float radius);
+	std::vector<Vertex> GetNeighbors(Vec3 position, float radius);
 
 public:
 	std::list<CMap2::Edge> front;
