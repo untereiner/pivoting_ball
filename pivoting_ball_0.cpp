@@ -1,13 +1,13 @@
-#include "pivoting_ball_naive0.h"
+#include "pivoting_ball_0.h"
 
-void PivotingBallNaive0::push_to_front(uint32_t edgeStart, uint32_t edgeEnd, uint32_t edgeDirection)
+void PivotingBall0::push_to_front(uint32_t edgeStart, uint32_t edgeEnd, uint32_t edgeDirection)
 {
 	front.push_back(edgeStart);
 	front.push_back(edgeEnd);
 	front.push_back(edgeDirection);
 }
 
-void PivotingBallNaive0::push_triangle(uint32_t point0, uint32_t point1, uint32_t point2, bool pushEdge0, bool pushEdge1, bool pushEdge2)
+void PivotingBall0::push_triangle(uint32_t point0, uint32_t point1, uint32_t point2, bool pushEdge0, bool pushEdge1, bool pushEdge2)
 {
 	Vec3 position0 = pointsPosition[point0];
 	Vec3 position1 = pointsPosition[point1];
@@ -32,7 +32,7 @@ void PivotingBallNaive0::push_triangle(uint32_t point0, uint32_t point1, uint32_
 	pointsUsed[point2] = true;
 }
 
-double PivotingBallNaive0::edgePointDistance(Vec3 edgeStart, Vec3 edgeEnd, Vec3 point)
+double PivotingBall0::edgePointDistance(Vec3 edgeStart, Vec3 edgeEnd, Vec3 point)
 {
 	Vec3 start_end = edgeEnd - edgeStart;
 	Vec3 start_point = point - edgeStart;
@@ -47,18 +47,18 @@ double PivotingBallNaive0::edgePointDistance(Vec3 edgeStart, Vec3 edgeEnd, Vec3 
 	return start_end.cross(start_point).norm() / start_end.norm();
 }
 
-Vec3 PivotingBallNaive0::getEdgeNormal(Vec3 edgeStart, Vec3 edgeEnd, Vec3 otherPoint)
+Vec3 PivotingBall0::getEdgeNormal(Vec3 edgeStart, Vec3 edgeEnd, Vec3 otherPoint)
 {
 	return ((edgeStart - otherPoint).normalized() + (edgeEnd - otherPoint).normalized()).normalized();
 }
 
-bool PivotingBallNaive0::FindSeed()
+bool PivotingBall0::FindSeed()
 {
 	push_triangle(0, 1, 2, true, true, true);
 	return true; 
 }
 
-void PivotingBallNaive0::OneFrontIteration()
+void PivotingBall0::OneFrontIteration()
 {
 	uint32_t edgeDirection = front.back();
 	front.pop_back();
@@ -94,12 +94,12 @@ void PivotingBallNaive0::OneFrontIteration()
 	}
 }
 
-bool PivotingBallNaive0::FrontIsEmpty()
+bool PivotingBall0::FrontIsEmpty()
 {
 	return front.size() == 0;
 }
 
-void PivotingBallNaive0::Initialize
+void PivotingBall0::Initialize
 (
 	CMap0& pointSet, 
 	CMap0::VertexAttribute<Vec3>& pointSetPositions,
@@ -119,7 +119,7 @@ void PivotingBallNaive0::Initialize
 	this->surfacePositions = &surfacePositions;
 }
 
-void PivotingBallNaive0::Complete()
+void PivotingBall0::Complete()
 {
 	FindSeed();
 	while (!FrontIsEmpty())
@@ -142,6 +142,6 @@ void PivotingBallNaive0::Complete()
 
 }
 
-void PivotingBallNaive0::Debug(std::unique_ptr<cgogn::rendering::DisplayListDrawer>& drawer)
+void PivotingBall0::Debug(std::unique_ptr<cgogn::rendering::DisplayListDrawer>& drawer)
 {
 }

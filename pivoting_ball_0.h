@@ -10,7 +10,7 @@ using CMap0 = cgogn::CMap0;
 using CMap2 = cgogn::CMap2;
 using Vec3 = Eigen::Vector3d;
 
-class PivotingBallNaive0
+class PivotingBall0
 {
 	private: 
 		std::vector<Vec3> pointsPosition;

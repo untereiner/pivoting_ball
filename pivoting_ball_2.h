@@ -10,7 +10,7 @@ using CMap0 = cgogn::CMap0;
 using CMap2 = cgogn::CMap2;
 using Vec3 = Eigen::Vector3d;
 
-class PivotingBallNaive1
+class PivotingBall2
 {
 private:
 	using Vertex = uint32_t;
@@ -25,6 +25,10 @@ private:
 	CMap2::VertexAttribute<Vec3>* surfacePositions;
 	CMap2::VertexAttribute<Vertex> surfaceVertexes;
 
+	void GetCircumscribedCircle(Vec3 p0, Vec3 p1, Vec3 p2, Vec3& center, double& radius);
+
+	bool IsOriented(Vec3 normal, Vec3 normal0, Vec3 normal1, Vec3 normal2);
+
 	bool GetBallCenter(Vertex vertex0, Vertex vertex1, Vertex vertex2, Vec3& center, Vertex* order);
 
 	void AddFrontEdge(CMap2::Edge edge);
@@ -37,7 +41,7 @@ private:
 
 	CMap2::Face AddTriangle(Vertex vertex0, Vertex vertex1, Vertex vertex2);
 
-	bool PivotingBallNaive1::IsEmpty(Vertex vertex0, Vertex vertex1, Vertex vertex2, Vec3 ballCenter);
+	bool IsEmpty(Vertex vertex0, Vertex vertex1, Vertex vertex2, Vec3 ballCenter);
 
 	std::vector<Vertex> GetNeighbors(Vec3 position, float radius);
 

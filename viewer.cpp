@@ -50,8 +50,9 @@
 
 #include <cgogn/rendering/drawer.h>
 
-#include "pivoting_ball_naive0.h"
-#include "pivoting_ball_naive1.h"
+#include "pivoting_ball_0.h"
+#include "pivoting_ball_1.h"
+#include "pivoting_ball_2.h"
 
 using namespace cgogn::numerics;
 
@@ -83,7 +84,7 @@ private:
 	CMap2 cmap2_;
 	CMap2::VertexAttribute<Vec3> vertex_position_2_;
 
-	PivotingBallNaive1 pivotingBall; 
+	PivotingBall1 pivotingBall; 
 	bool hasSeed; 
 
 	std::unique_ptr<cgogn::rendering::MapRender> render_2_ {nullptr};
