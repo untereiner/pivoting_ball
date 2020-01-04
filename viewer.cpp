@@ -26,6 +26,7 @@
 #include <QKeyEvent>
 
 #include <QOGLViewer/qoglviewer.h>
+#include <QPainter>
 #include <cgogn/core/cmap/cmap0.h>
 #include <cgogn/core/cmap/cmap2.h>
 
@@ -49,11 +50,14 @@
 
 #include <cgogn/rendering/drawer.h>
 
+#include "pivoting_ball_0.h"
+#include "pivoting_ball_1.h"
+#include "pivoting_ball_2.h"
+
 using namespace cgogn::numerics;
 
 using CMap0 = cgogn::CMap0;
 using CMap2 = cgogn::CMap2;
-
 using Vec3 = Eigen::Vector3d;
 
 class Viewer : public QOGLViewer
@@ -73,12 +77,16 @@ public:
 
 	void update_surface();
 
-private:
+	void drawText(double x, double y, QString str); 
 
+private:
 	//2d
 	CMap2 cmap2_;
 	CMap2::VertexAttribute<Vec3> vertex_position_2_;
-	CMap2::EdgeAttribute<uint32> edge_indices_;
+
+	PivotingBall2 pivotingBall; 
+	double currentRadius; 
+	bool hasSeed; 
 
 	std::unique_ptr<cgogn::rendering::MapRender> render_2_ {nullptr};
 	std::unique_ptr<cgogn::rendering::VBO> vbo_pos_2_ {nullptr};
@@ -91,6 +99,7 @@ private:
 	//0d
 	CMap0 cmap0_;
 	CMap0::VertexAttribute<Vec3> vertex_position_0_;
+	CMap0::VertexAttribute<Vec3> vertex_normal_0_;
 
 	std::unique_ptr<cgogn::rendering::MapRender> render_0_ {nullptr};
 	std::unique_ptr<cgogn::rendering::VBO> vbo_pos_0_ {nullptr};
@@ -103,10 +112,10 @@ private:
 	std::unique_ptr<cgogn::rendering::DisplayListDrawer::Renderer> drawer_rend_ {nullptr};
 
 	bool point_set_rendering_ {true};
-	bool flat_rendering_ {false};
+	bool flat_rendering_ {true};
 	bool vertices_rendering_ {false};
-	bool edge_rendering_ {false};
-	bool bb_rendering_ {true};
+	bool edge_rendering_ {true};
+	bool bb_rendering_ {false};
 };
 
 
@@ -114,132 +123,30 @@ private:
 // IMPLEMENTATION
 //
 
-std::vector<Vec3> pointsPosition;
-std::vector<bool> pointsUsed;
-std::vector<Vec3> triangles;
-std::vector<uint32_t> front;
-
-void push_to_front(uint32_t edgeStart, uint32_t edgeEnd, uint32_t edgeDirection)
-{
-	front.push_back(edgeStart);
-	front.push_back(edgeEnd);
-	front.push_back(edgeDirection);
-}
-
-void push_triangle(uint32_t point0, uint32_t point1, uint32_t point2, bool pushEdge0, bool pushEdge1, bool pushEdge2)
-{
-	Vec3 position0 = pointsPosition[point0];
-	Vec3 position1 = pointsPosition[point1];
-	Vec3 position2 = pointsPosition[point2];
-	float red = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-	float green = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-	float blue = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-	triangles.push_back(position0);
-	triangles.push_back(position1);
-	triangles.push_back(position2);
-	triangles.push_back(Vec3(red, green, blue));
-
-	if (!pointsUsed[point0] || !pointsUsed[point1])
-		push_to_front(point0, point1, point2);
-	if (!pointsUsed[point1] || !pointsUsed[point2])
-		push_to_front(point1, point2, point0);
-	if (!pointsUsed[point0] || !pointsUsed[point2])
-		push_to_front(point2, point0, point1);
-
-	pointsUsed[point0] = true;
-	pointsUsed[point1] = true;
-	pointsUsed[point2] = true;
-}
-
-double edgePointDistance(Vec3 edgeStart, Vec3 edgeEnd, Vec3 point)
-{
-	Vec3 start_end = edgeEnd - edgeStart;
-	Vec3 start_point = point - edgeStart;
-	Vec3 end_point = point - edgeEnd;
-
-	if (start_point.dot(start_end) <= 0.0)
-		return start_point.norm();
-
-	if (end_point.dot(start_end) >= 0.0)
-		return end_point.norm();
-
-	return start_end.cross(start_point).norm() / start_end.norm();
-}
-
-Vec3 getEdgeNormal(Vec3 edgeStart, Vec3 edgeEnd, Vec3 otherPoint)
-{
-	return ((edgeStart - otherPoint).normalized() + (edgeEnd - otherPoint).normalized()).normalized();
-}
-
-void find_seed_triangle()
-{
-	push_triangle(0, 1, 2, true,true,true);
-}
-
-void finish_front()
-{
-	while (front.size() != 0)
-	{
-		uint32_t edgeDirection = front.back();
-		front.pop_back();
-		uint32_t edgeEnd = front.back();
-		front.pop_back();
-		uint32_t edgeStart = front.back();
-		front.pop_back();
-
-		Vec3 edgeStartPosition = pointsPosition[edgeStart];
-		Vec3 edgeEndPosition = pointsPosition[edgeEnd];
-		Vec3 thirdPoint = pointsPosition[edgeDirection];
-		Vec3 edgeNormal = getEdgeNormal(edgeStartPosition, edgeEndPosition, thirdPoint).normalized();
-
-		uint32_t bestIndex = UINT32_MAX;
-		double bestDistance = std::numeric_limits<double>::max();
-		for (uint32_t i = 0; i < pointsPosition.size(); i++)
-		{
-			if (i != edgeDirection && i != edgeStart && i != edgeEnd)
-			{
-				Vec3 point = pointsPosition[i];
-				double distance = edgePointDistance(edgeStartPosition, edgeEndPosition, point);
-				if (distance < bestDistance)
-				{
-					bestIndex = i;
-					bestDistance = distance;
-				}
-			}
-		}
-
-		if (bestIndex != UINT32_MAX)
-		{
-			push_triangle(edgeStart, edgeEnd, bestIndex, false, true, true);
-		}
-	}
-}
-
 void Viewer::import(const std::string& point_set)
 {
 	cgogn::io::import_point_set<Vec3>(cmap0_, point_set);
 
-	vertex_position_0_ = cmap0_.template get_attribute<Vec3, CMap0::Vertex>("position");
+	vertex_position_0_ = cmap0_.get_attribute<Vec3, CMap0::Vertex>("position");
 	if (!vertex_position_0_.is_valid())
 	{
 		cgogn_log_error("Viewer::import") << "Missing attribute position. Aborting.";
 		std::exit(EXIT_FAILURE);
 	}
 
-	vertex_position_2_ = cmap2_.add_attribute<Vec3, CMap2::Vertex>("position");
-	edge_indices_ = cmap2_.add_attribute<uint32, CMap2::Edge>("indices");
-
-	cmap0_.foreach_cell([&](CMap0::Vertex vertex)
+	vertex_normal_0_ = cmap0_.get_attribute<Vec3, CMap0::Vertex>("normal");
+	if (!vertex_normal_0_.is_valid())
 	{
-		pointsPosition.push_back(vertex_position_0_[vertex]);
-		pointsUsed.push_back(false);
-	});
+		cgogn_log_error("Viewer::import") << "Missing attribute normal. Aborting.";
+		std::exit(EXIT_FAILURE);
+	}
 
-	find_seed_triangle();
-	finish_front();
+	vertex_position_2_ = cmap2_.add_attribute<Vec3, CMap2::Vertex>("position");
+
+	pivotingBall.Initialize(cmap0_, vertex_position_0_, vertex_normal_0_, cmap2_, vertex_position_2_);
 
 	cgogn::geometry::compute_AABB(vertex_position_0_, bb_);
-	setSceneRadius(cgogn::geometry::diagonal(bb_).norm()/2.0);
+	setSceneRadius(cgogn::geometry::diagonal(bb_).norm());
 	Vec3 center = cgogn::geometry::center(bb_);
 	setSceneCenter(qoglviewer::Vec(center[0], center[1], center[2]));
 	showEntireScene();
@@ -263,15 +170,99 @@ Viewer::Viewer() :
 	vertex_position_2_(),
 	cmap0_(),
 	vertex_position_0_(),
-	bb_()
+	vertex_normal_0_(), 
+	bb_(),
+	pivotingBall(),
+	hasSeed(false)
 {}
 
 void Viewer::keyPressEvent(QKeyEvent *ev)
 {
 	switch (ev->key())
 	{
+		case Qt::Key_S:
+			if (!hasSeed)
+			{
+				int attempts = 0; 
+				currentRadius = 0.000001;
+				while (!hasSeed && attempts < 64)
+				{
+					pivotingBall.SetRadius(currentRadius);
+					hasSeed = pivotingBall.FindSeed();
+					if (!hasSeed)
+					{
+						currentRadius *= 2.0;
+					}
+					attempts++; 
+				}
+				update_surface();
+			}	
+			break;
+		case Qt::Key_A:
+			if (hasSeed)
+			{
+				if (!pivotingBall.FrontIsDone())
+				{
+					pivotingBall.OneFrontIteration();
+				}
+				if (pivotingBall.FrontIsDone())
+					hasSeed = false; 
+				update_surface();
+			}
+			break;
+		case Qt::Key_0:
+			if (hasSeed)
+			{
+				for (int i = 0; i < 64; i++)
+				{
+					if (!pivotingBall.FrontIsDone())
+					{
+						pivotingBall.OneFrontIteration();
+					}
+					if (pivotingBall.FrontIsDone())
+						hasSeed = false;
+				}
+				update_surface();
+			}
+			break;
+		case Qt::Key_1:
+			if (hasSeed)
+			{
+				for (int i = 0; i < 64 * 64; i++)
+				{
+					if (!pivotingBall.FrontIsDone())
+					{
+						pivotingBall.OneFrontIteration();
+					}
+					if (pivotingBall.FrontIsDone())
+						hasSeed = false;
+				}
+				update_surface();
+			}
+			break;
 		case Qt::Key_F:
-			flat_rendering_ = !flat_rendering_;
+			if (hasSeed)
+			{
+				while (!pivotingBall.FrontIsDone())
+				{
+					pivotingBall.OneFrontIteration();
+				}
+				hasSeed = false; 
+
+				int connectedComponents = cmap2_.nb_cells<CMap2::ConnectedComponent>();
+				cgogn_log_info("Connected components: ") << connectedComponents; 
+			
+				int faces = cmap2_.nb_cells<CMap2::Face>();
+				cgogn_log_info("Faces: ") << faces;
+
+				int edges = cmap2_.nb_cells<CMap2::Edge>();
+				cgogn_log_info("Edges: ") << edges;
+
+				int vertexes = cmap2_.nb_cells<CMap2::Vertex>();
+				cgogn_log_info("Vertexes: ") << vertexes;
+
+				update_surface();
+			}
 			break;
 		case Qt::Key_E:
 			edge_rendering_ = !edge_rendering_;
@@ -281,9 +272,6 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
 			break;
 		case Qt::Key_B:
 			bb_rendering_ = !bb_rendering_;
-			break;
-		case Qt::Key_S:
-			point_set_rendering_ = !point_set_rendering_;
 			break;
 		case Qt::Key_X:
 		{
@@ -298,6 +286,21 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
 	QOGLViewer::keyPressEvent(ev);
 	//update drawing
 	update();
+}
+
+void Viewer::drawText(double x, double y, QString text)
+{
+	QFont font; 
+
+	QColor fontColor = QColor(255,255,255);
+
+	// Render text
+	/*
+	QPainter painter(this);
+	painter.setPen(fontColor);
+	painter.setFont(font);
+	painter.drawText(x, y, text);
+	painter.end();*/
 }
 
 void Viewer::draw()
@@ -334,7 +337,6 @@ void Viewer::draw()
 		param_edge_->release();
 	}
 
-
 	if (point_set_rendering_)
 	{
 		param_point_sprite_0_->bind(proj,view);
@@ -344,6 +346,10 @@ void Viewer::draw()
 
 	if (bb_rendering_)
 		drawer_rend_->draw(proj,view);
+
+	this->drawText(0, 10, QString("Appuyez sur S pour trouver un seed"));
+	this->drawText(0, 20, QString("Appuyez sur A pour faire avancer le front"));
+	this->drawText(0, 30, QString("Appuyez sur F pour finir le front"));
 }
 
 void Viewer::update_surface()
@@ -353,6 +359,48 @@ void Viewer::update_surface()
 	render_2_->init_primitives(cmap2_, cgogn::rendering::POINTS);
 	render_2_->init_primitives(cmap2_, cgogn::rendering::LINES);
 	render_2_->init_primitives(cmap2_, cgogn::rendering::TRIANGLES, &vertex_position_2_);
+
+	drawer_->new_list();
+	drawer_->line_width_aa(2.0);
+	drawer_->begin(GL_LINE_LOOP);
+	drawer_->color3f(1.0, 1.0, 1.0);
+	drawer_->vertex3f(bb_.min()[0], bb_.min()[1], bb_.min()[2]);
+	drawer_->vertex3f(bb_.max()[0], bb_.min()[1], bb_.min()[2]);
+	drawer_->vertex3f(bb_.max()[0], bb_.max()[1], bb_.min()[2]);
+	drawer_->vertex3f(bb_.min()[0], bb_.max()[1], bb_.min()[2]);
+	drawer_->vertex3f(bb_.min()[0], bb_.max()[1], bb_.max()[2]);
+	drawer_->vertex3f(bb_.max()[0], bb_.max()[1], bb_.max()[2]);
+	drawer_->vertex3f(bb_.max()[0], bb_.min()[1], bb_.max()[2]);
+	drawer_->vertex3f(bb_.min()[0], bb_.min()[1], bb_.max()[2]);
+	drawer_->end();
+	drawer_->begin(GL_LINES);
+	drawer_->color3f(1.0, 1.0, 1.0);
+	drawer_->vertex3f(bb_.min()[0], bb_.min()[1], bb_.min()[2]);
+	drawer_->vertex3f(bb_.min()[0], bb_.max()[1], bb_.min()[2]);
+	drawer_->vertex3f(bb_.min()[0], bb_.min()[1], bb_.max()[2]);
+	drawer_->vertex3f(bb_.min()[0], bb_.max()[1], bb_.max()[2]);
+	drawer_->vertex3f(bb_.max()[0], bb_.min()[1], bb_.min()[2]);
+	drawer_->vertex3f(bb_.max()[0], bb_.min()[1], bb_.max()[2]);
+	drawer_->vertex3f(bb_.max()[0], bb_.max()[1], bb_.min()[2]);
+	drawer_->vertex3f(bb_.max()[0], bb_.max()[1], bb_.max()[2]);
+	drawer_->end();
+
+	drawer_->point_size(1.0);
+	drawer_->begin(GL_LINES);
+	drawer_->color3f(0.0, 0.0, 1.0);
+	cmap0_.foreach_cell([&](CMap0::Vertex vertex)
+	{
+		Vec3 position = vertex_position_0_[vertex];
+		Vec3 normal = vertex_normal_0_[vertex].normalized();
+
+		drawer_->vertex3f(position[0], position[1], position[2]);
+		drawer_->vertex3f(position[0] + normal[0], position[1] + normal[1], position[2] + normal[2]);
+	});
+	drawer_->end();
+
+	pivotingBall.Debug(drawer_);
+
+	drawer_->end_list();
 }
 
 void Viewer::init()
@@ -365,7 +413,7 @@ void Viewer::init()
 	param_point_sprite_0_ = cgogn::rendering::ShaderPointSprite::generate_param();
 	param_point_sprite_0_->set_position_vbo(vbo_pos_0_.get());
 	param_point_sprite_0_->color_ = QColor(0,255,0);
-	param_point_sprite_0_->size_= .1f;
+	param_point_sprite_0_->size_= cgogn::geometry::diagonal(bb_).norm() * 0.0025f;
 
 	cgogn::rendering::update_vbo(vertex_position_0_, vbo_pos_0_.get());
 	render_0_->init_primitives(cmap0_, cgogn::rendering::POINTS);
@@ -388,61 +436,15 @@ void Viewer::init()
 	param_flat_ = cgogn::rendering::ShaderFlat::generate_param();
 	param_flat_->set_position_vbo(vbo_pos_2_.get());
 	param_flat_->front_color_ = QColor(0,200,0);
-	param_flat_->back_color_ = QColor(0,0,200);
-	param_flat_->ambiant_color_ = QColor(5,5,5);
-
+	param_flat_->back_color_ = QColor(200,0,0);
+	param_flat_->ambiant_color_ = QColor(5, 5, 5);
 
 	// drawer for simple old-school g1 rendering
 	drawer_ = cgogn::make_unique<cgogn::rendering::DisplayListDrawer>();
-	drawer_rend_= drawer_->generate_renderer();
-	drawer_->new_list();
-	drawer_->line_width_aa(2.0);
-	drawer_->begin(GL_LINE_LOOP);
-		drawer_->color3f(1.0,1.0,1.0);
-		drawer_->vertex3f(bb_.min()[0],bb_.min()[1],bb_.min()[2]);
-		drawer_->vertex3f(bb_.max()[0],bb_.min()[1],bb_.min()[2]);
-		drawer_->vertex3f(bb_.max()[0],bb_.max()[1],bb_.min()[2]);
-		drawer_->vertex3f(bb_.min()[0],bb_.max()[1],bb_.min()[2]);
-		drawer_->vertex3f(bb_.min()[0],bb_.max()[1],bb_.max()[2]);
-		drawer_->vertex3f(bb_.max()[0],bb_.max()[1],bb_.max()[2]);
-		drawer_->vertex3f(bb_.max()[0],bb_.min()[1],bb_.max()[2]);
-		drawer_->vertex3f(bb_.min()[0],bb_.min()[1],bb_.max()[2]);
-	drawer_->end();
-	drawer_->begin(GL_LINES);
-	drawer_->color3f(1.0,1.0,1.0);
-		drawer_->vertex3f(bb_.min()[0],bb_.min()[1],bb_.min()[2]);
-		drawer_->vertex3f(bb_.min()[0],bb_.max()[1],bb_.min()[2]);
-		drawer_->vertex3f(bb_.min()[0],bb_.min()[1],bb_.max()[2]);
-		drawer_->vertex3f(bb_.min()[0],bb_.max()[1],bb_.max()[2]);
-		drawer_->vertex3f(bb_.max()[0],bb_.min()[1],bb_.min()[2]);
-		drawer_->vertex3f(bb_.max()[0],bb_.min()[1],bb_.max()[2]);
-		drawer_->vertex3f(bb_.max()[0],bb_.max()[1],bb_.min()[2]);
-		drawer_->vertex3f(bb_.max()[0],bb_.max()[1],bb_.max()[2]);
-	drawer_->end();
-	/*
-	drawer_->point_size(20.0);
-	drawer_->begin(GL_POINTS);
-	drawer_->color3f(0.0, 0.0, 1.0);
-	for (uint32_t i = 0; i < allPoints.size(); i++)
-	{
-		auto position = allPoints[i];
-		drawer_->vertex3f(position[0], position[1], position[2]);
-	}
-	drawer_->end();*/
-	drawer_->begin(GL_TRIANGLES);
-	for (uint32_t i = 0; i < triangles.size() / 4; i++)
-	{
-		auto color = triangles[i * 4 + 3];
-		drawer_->color3f(color[0], color[1], color[2]);
-		auto position0 = triangles[i*4];
-		drawer_->vertex3f(position0[0], position0[1], position0[2]);
-		auto position1 = triangles[i * 4+1];
-		drawer_->vertex3f(position1[0], position1[1], position1[2]);
-		auto position2 = triangles[i * 4+2];
-		drawer_->vertex3f(position2[0], position2[1], position2[2]);
-	}
-	drawer_->end();
-	drawer_->end_list();
+	drawer_rend_= drawer_->generate_renderer();	
+	
+	update_surface();
+
 }
 
 int main(int argc, char** argv)
@@ -455,6 +457,12 @@ int main(int argc, char** argv)
 	}
 	else
 		surface_mesh = std::string(argv[1]);
+
+	//surface_mesh += "hand_remeshed.obj";
+	surface_mesh += "octa_flower_Lp.obj";
+	//surface_mesh += "sphere.obj";
+	//surface_mesh += "nerve_remeshed.obj";
+	//surface_mesh += "grid.plo";
 
 	QApplication application(argc, argv);
 	qoglviewer::init_ogl_context();
