@@ -5,48 +5,77 @@
 #include <cgogn/core/cmap/cmap0.h>
 #include <cgogn/core/cmap/cmap2.h>
 #include <cgogn/rendering/drawer.h>
+#include <nanoflann.hpp>
 
 using CMap0 = cgogn::CMap0;
 using CMap2 = cgogn::CMap2;
 using Vec3 = Eigen::Vector3d;
+
+typedef Eigen::Matrix<double, Eigen::Dynamic, 3> PointMatrix;
+typedef nanoflann::KDTreeEigenMatrixAdaptor<PointMatrix> KDTree;
 
 class PivotingBall2
 {
 private:
 	using Vertex = uint32_t;
 
-	float ballRadius;
+	std::list<CMap2::Edge> untriedEdgeList; 
+	std::list<CMap2::Edge> triedEdgeList;
+	std::list<CMap2::Edge> sewedEdgeList;
+
+	double ballRadius;
 	uint32_t pointCount; 
 	std::vector<Vec3> pointPositions; 
 	std::vector<Vec3> pointNormals; 
-	std::vector<std::list<std::list<CMap2::Edge>::iterator>> pointFrontEdges;
+
+	std::vector<std::list<std::list<CMap2::Edge>::iterator>> pointUntriedEdges;
+	std::vector<std::list<std::list<CMap2::Edge>::iterator>> pointTriedEdges;
+	std::vector<std::list<std::list<CMap2::Edge>::iterator>> pointSewedEdges;
 
 	CMap2* surface; 
 	CMap2::VertexAttribute<Vec3>* surfacePositions;
 	CMap2::VertexAttribute<Vertex> surfaceVertexes;
 
-	void GetCircumscribedCircle(Vec3 p0, Vec3 p1, Vec3 p2, Vec3& center, double& radius);
+	PointMatrix pointsMatrix;
+	std::vector<std::pair<Eigen::Index, double>> searchResult;
+	std::vector<Vertex> neighbors;
+	KDTree* kdtree;
 
-	bool IsOriented(Vec3 normal, Vec3 normal0, Vec3 normal1, Vec3 normal2);
+	void GetCircumscribedCircle(Vertex vertex0, Vertex vertex1, Vertex vertex2, Vec3& center, double& radius);
 
-	bool GetBallCenter(Vertex vertex0, Vertex vertex1, Vertex vertex2, Vec3& center, Vertex* order);
+	Vec3 Normal(Vertex vertex0, Vertex vertex1, Vertex vertex2);
 
-	void AddFrontEdge(CMap2::Edge edge);
+	bool WellOriented(Vertex vertex0, Vertex vertex1, Vertex vertex2);
 
-	void RemoveFrontEdge(std::list<CMap2::Edge>::iterator edge);
+	void Reorder(Vertex vertex0, Vertex vertex1, Vertex vertex2, Vertex* order);
 
-	std::list<CMap2::Edge>::iterator FindFrontEdge(CMap2::Edge edge);
+	bool GetBallCenter(Vertex vertex0, Vertex vertex1, Vertex vertex2, Vec3& center);
+
+	void AddTriedEdge(CMap2::Edge edge);
+	void RemoveTriedEdge(std::list<CMap2::Edge>::iterator edge);
+	std::list<CMap2::Edge>::iterator FindTriedEdge(Vertex startVertex, Vertex endVertex);
+	std::list<CMap2::Edge>::iterator FindOppositeTriedEdge(CMap2::Edge edge);
+
+	void AddUntriedEdge(CMap2::Edge edge);
+	void RemoveUntriedEdge(std::list<CMap2::Edge>::iterator edge);
+	std::list<CMap2::Edge>::iterator FindUntriedEdge(Vertex startVertex, Vertex endVertex);
+	std::list<CMap2::Edge>::iterator FindOppositeUntriedEdge(CMap2::Edge edge);
+
+	void AddSewedEdge(CMap2::Edge edge);
+	void RemoveSewedEdge(std::list<CMap2::Edge>::iterator edge);
+	std::list<CMap2::Edge>::iterator FindSewedEdge(Vertex startVertex, Vertex endVertex);
 
 	void JoinOrGlueEdge(CMap2::Edge edge);
+
+	bool ValidTriangle(Vertex vertex0, Vertex vertex1, Vertex vertex2);
 
 	CMap2::Face AddTriangle(Vertex vertex0, Vertex vertex1, Vertex vertex2);
 
 	bool IsEmpty(Vertex vertex0, Vertex vertex1, Vertex vertex2, Vec3 ballCenter);
 
-	std::vector<Vertex> GetNeighbors(Vec3 position, float radius);
+	void GetNeighbors(Vec3 position, float radius);
 
 public:
-	std::list<CMap2::Edge> front;
 
 	void Initialize
 	(
@@ -54,13 +83,14 @@ public:
 		CMap0::VertexAttribute<Vec3>& pointSetPositions,
 		CMap0::VertexAttribute<Vec3>& pointNormals,
 		CMap2& surface,
-		CMap2::VertexAttribute<Vec3>& surfacePositions,
-		float ballRadius
+		CMap2::VertexAttribute<Vec3>& surfacePositions
 	);
+
+	void SetRadius(double newRadius); 
 
 	bool FindSeed();
 
-	bool FrontIsEmpty();
+	bool FrontIsDone();
 
 	void OneFrontIteration();
 

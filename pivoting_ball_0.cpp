@@ -94,9 +94,9 @@ void PivotingBall0::OneFrontIteration()
 	}
 }
 
-bool PivotingBall0::FrontIsEmpty()
+bool PivotingBall0::FrontIsDone()
 {
-	return front.size() == 0;
+	return front.empty(); 
 }
 
 void PivotingBall0::Initialize
@@ -105,8 +105,7 @@ void PivotingBall0::Initialize
 	CMap0::VertexAttribute<Vec3>& pointSetPositions,
 	CMap0::VertexAttribute<Vec3>& pointNormals,
 	CMap2& surface,
-	CMap2::VertexAttribute<Vec3>& surfacePositions,
-	float ballRadius
+	CMap2::VertexAttribute<Vec3>& surfacePositions
 )
 {
 	pointSet.foreach_cell([&](CMap0::Vertex vertex)
@@ -119,10 +118,15 @@ void PivotingBall0::Initialize
 	this->surfacePositions = &surfacePositions;
 }
 
+void PivotingBall0::SetRadius(double radius)
+{
+	this->ballRadius = radius; 
+}
+
 void PivotingBall0::Complete()
 {
 	FindSeed();
-	while (!FrontIsEmpty())
+	while (!FrontIsDone())
 	{
 		OneFrontIteration();
 	}

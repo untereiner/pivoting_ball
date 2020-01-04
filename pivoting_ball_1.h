@@ -15,6 +15,8 @@ class PivotingBall1
 private:
 	using Vertex = uint32_t;
 
+	std::list<CMap2::Edge> front;
+
 	float ballRadius;
 	uint32_t pointCount; 
 	std::vector<Vec3> pointPositions; 
@@ -46,7 +48,6 @@ private:
 	std::vector<Vertex> GetNeighbors(Vec3 position, float radius);
 
 public:
-	std::list<CMap2::Edge> front;
 
 	void Initialize
 	(
@@ -54,13 +55,14 @@ public:
 		CMap0::VertexAttribute<Vec3>& pointSetPositions,
 		CMap0::VertexAttribute<Vec3>& pointNormals,
 		CMap2& surface,
-		CMap2::VertexAttribute<Vec3>& surfacePositions,
-		float ballRadius
+		CMap2::VertexAttribute<Vec3>& surfacePositions
 	);
+
+	void SetRadius(double radius);
 
 	bool FindSeed();
 
-	bool FrontIsEmpty();
+	bool FrontIsDone();
 
 	void OneFrontIteration();
 

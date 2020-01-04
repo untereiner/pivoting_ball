@@ -202,8 +202,7 @@ void PivotingBall1::Initialize
 	CMap0::VertexAttribute<Vec3>& pointPositions,
 	CMap0::VertexAttribute<Vec3>& pointNormals,
 	CMap2& surface,
-	CMap2::VertexAttribute<Vec3>& surfacePositions,
-	float ballRadius
+	CMap2::VertexAttribute<Vec3>& surfacePositions
 )
 {
 	pointCount = 0; 
@@ -211,6 +210,7 @@ void PivotingBall1::Initialize
 	{
 		pointCount++;
 	});
+
 	this->pointPositions.resize(pointCount);
 	this->pointNormals.resize(pointCount);
 	this->pointFrontEdges.resize(pointCount); 
@@ -224,9 +224,13 @@ void PivotingBall1::Initialize
 
 	this->surface = &surface;
 	this->surfacePositions = &surfacePositions;
-	this->ballRadius = ballRadius;
 
 	surfaceVertexes = surface.add_attribute<Vertex, CMap2::Vertex>("vertexes");
+}
+
+void PivotingBall1::SetRadius(double radius)
+{
+	this->ballRadius = radius;
 }
 
 bool PivotingBall1::FindSeed()
@@ -276,7 +280,7 @@ bool PivotingBall1::FindSeed()
 	return found; 
 }
 
-bool PivotingBall1::FrontIsEmpty()
+bool PivotingBall1::FrontIsDone()
 {
 	return front.empty(); 
 }
@@ -370,7 +374,7 @@ void PivotingBall1::Complete()
 {
 	if (FindSeed())
 	{
-		while (!FrontIsEmpty())
+		while (!FrontIsDone())
 		{
 			OneFrontIteration(); 
 		}

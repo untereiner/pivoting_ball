@@ -37,6 +37,7 @@ set(HEADER_FILES
 	pivoting_ball_0.h
 	pivoting_ball_1.h
 	pivoting_ball_2.h
+	nanoflann.hpp
 	)
 
 set(SOURCE_FILES

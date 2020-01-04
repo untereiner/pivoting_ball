@@ -84,7 +84,8 @@ private:
 	CMap2 cmap2_;
 	CMap2::VertexAttribute<Vec3> vertex_position_2_;
 
-	PivotingBall1 pivotingBall; 
+	PivotingBall2 pivotingBall; 
+	double currentRadius; 
 	bool hasSeed; 
 
 	std::unique_ptr<cgogn::rendering::MapRender> render_2_ {nullptr};
@@ -113,8 +114,8 @@ private:
 	bool point_set_rendering_ {true};
 	bool flat_rendering_ {true};
 	bool vertices_rendering_ {false};
-	bool edge_rendering_ {false};
-	bool bb_rendering_ {true};
+	bool edge_rendering_ {true};
+	bool bb_rendering_ {false};
 };
 
 
@@ -126,25 +127,26 @@ void Viewer::import(const std::string& point_set)
 {
 	cgogn::io::import_point_set<Vec3>(cmap0_, point_set);
 
-	vertex_position_0_ = cmap0_.template get_attribute<Vec3, CMap0::Vertex>("position");
+	vertex_position_0_ = cmap0_.get_attribute<Vec3, CMap0::Vertex>("position");
 	if (!vertex_position_0_.is_valid())
 	{
 		cgogn_log_error("Viewer::import") << "Missing attribute position. Aborting.";
 		std::exit(EXIT_FAILURE);
 	}
 
-	vertex_normal_0_ = cmap0_.add_attribute<Vec3, CMap0::Vertex>("normal");
-	cmap0_.foreach_cell([&](CMap0::Vertex vertex)
+	vertex_normal_0_ = cmap0_.get_attribute<Vec3, CMap0::Vertex>("normal");
+	if (!vertex_normal_0_.is_valid())
 	{
-		vertex_normal_0_[vertex] = Vec3(0.0f, 0.0f, 1.0f);
-	});
+		cgogn_log_error("Viewer::import") << "Missing attribute normal. Aborting.";
+		std::exit(EXIT_FAILURE);
+	}
 
 	vertex_position_2_ = cmap2_.add_attribute<Vec3, CMap2::Vertex>("position");
 
-	pivotingBall.Initialize(cmap0_, vertex_position_0_, vertex_normal_0_, cmap2_, vertex_position_2_, 2.0);
+	pivotingBall.Initialize(cmap0_, vertex_position_0_, vertex_normal_0_, cmap2_, vertex_position_2_);
 
 	cgogn::geometry::compute_AABB(vertex_position_0_, bb_);
-	setSceneRadius(cgogn::geometry::diagonal(bb_).norm()/2.0);
+	setSceneRadius(cgogn::geometry::diagonal(bb_).norm());
 	Vec3 center = cgogn::geometry::center(bb_);
 	setSceneCenter(qoglviewer::Vec(center[0], center[1], center[2]));
 	showEntireScene();
@@ -181,30 +183,84 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
 		case Qt::Key_S:
 			if (!hasSeed)
 			{
-				hasSeed = pivotingBall.FindSeed();
+				int attempts = 0; 
+				currentRadius = 0.000001;
+				while (!hasSeed && attempts < 64)
+				{
+					pivotingBall.SetRadius(currentRadius);
+					hasSeed = pivotingBall.FindSeed();
+					if (!hasSeed)
+					{
+						currentRadius *= 2.0;
+					}
+					attempts++; 
+				}
 				update_surface();
 			}	
 			break;
 		case Qt::Key_A:
 			if (hasSeed)
 			{
-				if (!pivotingBall.FrontIsEmpty())
+				if (!pivotingBall.FrontIsDone())
 				{
 					pivotingBall.OneFrontIteration();
 				}
-				if (pivotingBall.FrontIsEmpty())
+				if (pivotingBall.FrontIsDone())
 					hasSeed = false; 
+				update_surface();
+			}
+			break;
+		case Qt::Key_0:
+			if (hasSeed)
+			{
+				for (int i = 0; i < 64; i++)
+				{
+					if (!pivotingBall.FrontIsDone())
+					{
+						pivotingBall.OneFrontIteration();
+					}
+					if (pivotingBall.FrontIsDone())
+						hasSeed = false;
+				}
+				update_surface();
+			}
+			break;
+		case Qt::Key_1:
+			if (hasSeed)
+			{
+				for (int i = 0; i < 64 * 64; i++)
+				{
+					if (!pivotingBall.FrontIsDone())
+					{
+						pivotingBall.OneFrontIteration();
+					}
+					if (pivotingBall.FrontIsDone())
+						hasSeed = false;
+				}
 				update_surface();
 			}
 			break;
 		case Qt::Key_F:
 			if (hasSeed)
 			{
-				while (!pivotingBall.FrontIsEmpty())
+				while (!pivotingBall.FrontIsDone())
 				{
 					pivotingBall.OneFrontIteration();
 				}
 				hasSeed = false; 
+
+				int connectedComponents = cmap2_.nb_cells<CMap2::ConnectedComponent>();
+				cgogn_log_info("Connected components: ") << connectedComponents; 
+			
+				int faces = cmap2_.nb_cells<CMap2::Face>();
+				cgogn_log_info("Faces: ") << faces;
+
+				int edges = cmap2_.nb_cells<CMap2::Edge>();
+				cgogn_log_info("Edges: ") << edges;
+
+				int vertexes = cmap2_.nb_cells<CMap2::Vertex>();
+				cgogn_log_info("Vertexes: ") << vertexes;
+
 				update_surface();
 			}
 			break;
@@ -239,11 +295,12 @@ void Viewer::drawText(double x, double y, QString text)
 	QColor fontColor = QColor(255,255,255);
 
 	// Render text
+	/*
 	QPainter painter(this);
 	painter.setPen(fontColor);
 	painter.setFont(font);
 	painter.drawText(x, y, text);
-	painter.end();
+	painter.end();*/
 }
 
 void Viewer::draw()
@@ -279,7 +336,6 @@ void Viewer::draw()
 		glDisable(GL_BLEND);
 		param_edge_->release();
 	}
-
 
 	if (point_set_rendering_)
 	{
@@ -335,7 +391,7 @@ void Viewer::update_surface()
 	cmap0_.foreach_cell([&](CMap0::Vertex vertex)
 	{
 		Vec3 position = vertex_position_0_[vertex];
-		Vec3 normal = vertex_normal_0_[vertex];
+		Vec3 normal = vertex_normal_0_[vertex].normalized();
 
 		drawer_->vertex3f(position[0], position[1], position[2]);
 		drawer_->vertex3f(position[0] + normal[0], position[1] + normal[1], position[2] + normal[2]);
@@ -357,7 +413,7 @@ void Viewer::init()
 	param_point_sprite_0_ = cgogn::rendering::ShaderPointSprite::generate_param();
 	param_point_sprite_0_->set_position_vbo(vbo_pos_0_.get());
 	param_point_sprite_0_->color_ = QColor(0,255,0);
-	param_point_sprite_0_->size_= .1f;
+	param_point_sprite_0_->size_= cgogn::geometry::diagonal(bb_).norm() * 0.0025f;
 
 	cgogn::rendering::update_vbo(vertex_position_0_, vbo_pos_0_.get());
 	render_0_->init_primitives(cmap0_, cgogn::rendering::POINTS);
@@ -381,7 +437,7 @@ void Viewer::init()
 	param_flat_->set_position_vbo(vbo_pos_2_.get());
 	param_flat_->front_color_ = QColor(0,200,0);
 	param_flat_->back_color_ = QColor(200,0,0);
-	param_flat_->ambiant_color_ = QColor(5,5,5);
+	param_flat_->ambiant_color_ = QColor(5, 5, 5);
 
 	// drawer for simple old-school g1 rendering
 	drawer_ = cgogn::make_unique<cgogn::rendering::DisplayListDrawer>();
@@ -401,6 +457,12 @@ int main(int argc, char** argv)
 	}
 	else
 		surface_mesh = std::string(argv[1]);
+
+	//surface_mesh += "hand_remeshed.obj";
+	surface_mesh += "octa_flower_Lp.obj";
+	//surface_mesh += "sphere.obj";
+	//surface_mesh += "nerve_remeshed.obj";
+	//surface_mesh += "grid.plo";
 
 	QApplication application(argc, argv);
 	qoglviewer::init_ogl_context();

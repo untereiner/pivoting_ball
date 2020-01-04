@@ -17,6 +17,7 @@ class PivotingBall0
 		std::vector<bool> pointsUsed;
 		std::vector<Vec3> triangles;
 		std::vector<uint32_t> front;
+		double ballRadius; 
 
 		CMap2* surface; 
 		CMap2::VertexAttribute<Vec3>* surfacePositions;
@@ -36,13 +37,14 @@ class PivotingBall0
 			CMap0::VertexAttribute<Vec3>& pointSetPositions,
 			CMap0::VertexAttribute<Vec3>& pointNormals,
 			CMap2& surface,
-			CMap2::VertexAttribute<Vec3>& surfacePositions,
-			float ballRadius
+			CMap2::VertexAttribute<Vec3>& surfacePositions
 		);
+
+		void SetRadius(double newRadius);
 
 		bool FindSeed();
 
-		bool FrontIsEmpty(); 
+		bool FrontIsDone();
 
 		void OneFrontIteration();
 
